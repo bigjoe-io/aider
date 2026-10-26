@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "leash-cli",
+      "name": "aidr-cli",
       "dependencies": {
         "commander": "^12.1.0",
         "viem": "2.57.5",

@@ -1,208 +1,201 @@
-# leash — AI Agent Payment Skill
-
-`leash` is a command-line tool that lets an AI agent spend USDC from a human-owned Leash wallet on Arc. All output is JSON so you can parse it programmatically.
-
+---
+name: aidr
+description: Pay for things in USDC from an Aider wallet on Arc, inside the limits the wallet's owner set. Use when a task needs you to pay an address, check how much you can still spend, or wait for the owner to approve a bigger payment.
 ---
 
-## Setup (one-time, done by the owner)
+# aidr: paying with an Aider wallet
 
-The wallet owner runs `leash init` with the agent's private key and wallet ID:
+`aidr` lets you, an AI agent, spend USDC from a wallet a human owns. The money stays in the Aider
+contract on Arc. You hold your own agent key, and the contract checks every payment against the
+owner's rules: a per-payment limit, a daily limit (per UTC day), an optional expiry, recipient
+allow/block lists and a pause switch. Payments within your limits go through at once. Bigger ones
+become **approval requests** that the owner approves or rejects. The owner can revoke you at any time.
 
-```bash
-leash init --wallet 1 --key 0x<AGENT_PRIVATE_KEY>
-```
+Every command prints **one JSON object on stdout** and a short human line on stderr.
+Exit code `0` = success, `1` = error. Amounts in JSON are USDC decimal strings such as `"0.05"`.
 
-Config and key are saved to `~/.leash/` with file permissions 600. You never need to handle the key again — leash reads it automatically.
+## Setup (once, on the agent's machine)
 
----
-
-## Command reference
-
-### Check balance before paying
-
-Always run `leash balance` before making a payment. Parse the JSON output to check:
-
-- `wallet.paused` — if `true`, all payments are blocked. Stop and report to the user.
-- `agent.active` — if `false`, you have been revoked. Stop and report to the user.
-- `wallet.available` — must be ≥ the payment amount.
-- `agent.remainingToday` — must be ≥ the payment amount for a direct payment.
-- `agent.perPaymentLimit` — single payment must not exceed this.
+The user (the wallet owner) gives you a wallet id and **your own agent key**: a separate key they
+added as an agent in the Aider app, never the owner's wallet key.
 
 ```bash
-leash balance
+# install from the repo
+cd cli && bun install && bun run build && npm link
+
+# configure: the key goes in an env var so it stays out of shell history
+export AIDR_AGENT_KEY=0x...        # the agent's own private key
+aidr init --wallet 1               # Arc Testnet, default contract
+# Arc mainnet has no default contract yet:
+aidr init --wallet 1 --network mainnet --contract 0x...
 ```
 
-Example response:
+`init` options: `--key <hex>` (instead of `AIDR_AGENT_KEY`), `--network testnet|mainnet` (or
+`--mainnet`), `--contract <address>` (required on mainnet), `--rpc <url>`, `--deploy-block <n>`.
+It checks that the RPC answers on the right chain and that the address holds an Aider contract
+(nothing is saved if not), refuses the wallet owner's key, and warns if your key isn't an active
+agent on the wallet yet. It writes `~/.aidr/config.json` and `~/.aidr/key` (files mode 600, folder
+mode 700) and never prints the key.
+
+Your agent address also needs a little USDC of its own for gas (Arc gas is paid in USDC). Payments
+themselves come from the Aider wallet.
+
+## Commands
+
+### `aidr balance`: check before you pay
+
 ```json
 {
-  "wallet": {
-    "id": "1",
-    "balance": "$10.00",
-    "reserved": "$1.00",
-    "available": "$9.00",
-    "paused": false
-  },
+  "status": "ok",
+  "network": "testnet",
+  "contract": "0xED32E15d81E7864BF19cAeA4333bd0781f328Ba3",
+  "wallet": { "id": "1", "balance": "2.00", "reserved": "1.00", "available": "1.00", "paused": false, "recipientMode": "any" },
   "agent": {
-    "address": "0x...",
-    "label": "Claude Code",
-    "active": true,
-    "perPaymentLimit": "$0.10",
-    "dailyLimit": "$0.50",
-    "spentToday": "$0.20",
-    "remainingToday": "$0.30",
-    "expiresAt": "never"
-  }
+    "address": "0x7099…79C8", "label": "Claude Code", "status": "active",
+    "perPaymentLimit": "0.10", "dailyLimit": "0.50", "spentToday": "0.13", "remainingToday": "0.37",
+    "dailyResetAt": "2026-10-27T00:00:00.000Z", "expiresAt": "2026-11-25T12:00:00.000Z"
+  },
+  "maxDirectPayment": "0.10",
+  "notes": []
 }
 ```
 
----
+- `agent.status`: `active`, `revoked` (the owner cut you off), `expired` (your key's expiry
+  passed) or `not_added` (the owner hasn't added this key yet). Only `active` can pay.
+- `maxDirectPayment`: the largest payment that goes through right now without approval (the
+  smallest of your per-payment limit, what's left today and the wallet's available balance; `0.00`
+  when paused, revoked or expired). Recipient rules still apply.
+- `spentToday` resets at 00:00 UTC (`dailyResetAt`). `expiresAt` is `null` for no expiry.
 
-### Make a payment
+### `aidr pay <to> <amount> "<memo>"`
 
 ```bash
-leash pay <to> <amount> "<memo>"
+aidr pay 0x8f3…a21 0.05 "API credits for the weather lookup"
 ```
 
-- `<to>` — recipient Ethereum address
-- `<amount>` — USDC amount, e.g. `0.05` or `1.50`
-- `<memo>` — human-readable reason (required; be specific and honest)
+- `<amount>`: like `0.05`, `1` or `'$0.05'` (quote a `$` in single quotes, or the shell eats it).
+  More than 0, at most 6 decimals.
+- `<memo>`: required, at most 256 bytes. Quote it. Say plainly what the payment is for; the owner reads it.
+- Options: `--no-request` (fail instead of asking for approval), `--ttl <minutes>` (how long the
+  owner has to approve: 1 to 10080, default 30), `--send-anyway` (see below).
 
-**Memo guidelines:**
-- Always describe the real purpose: `"API credits for run #42"`, `"Summarisation job for user request"`, `"Dataset download fee"`
-- Never use vague memos like `"payment"` or `"test"` — the owner reviews these
-- Keep it under 80 characters
+Results:
 
-**How leash pay works:**
-
-1. If the payment is within your limits (per-payment and daily), it pays immediately. Response:
-   ```json
-   { "status": "paid", "txHash": "0x...", "explorer": "https://...", "amount": "$0.05", "memo": "..." }
-   ```
-
-2. If you are over a limit, leash automatically submits an approval request (30-minute TTL) and returns:
-   ```json
-   { "status": "pending_approval", "requestId": "42", "txHash": "0x...", "expiresAt": "..." }
-   ```
-   Report this to the user: **"Payment of $X is awaiting owner approval (request #42). I'll check back in a moment."**
-
-3. Use `--no-request` to disable the automatic fallback (the command then fails with a clear error instead of requesting approval).
-
-**What to do on each error status:**
-
-| Error | Meaning | What to do |
+| `status` | Meaning | Exit |
 |---|---|---|
-| `WalletPaused` | Owner paused all spending | Stop. Tell the user. Do not retry. |
-| `AgentRevoked` | Your key was revoked | Stop. Tell the user. Do not retry. |
-| `AgentExpired` | Your key has expired | Stop. Tell the user to extend it. |
-| `OverPerPaymentLimit` | Single payment too large | This payment needs owner approval — leash handles it automatically unless `--no-request` is set. |
-| `OverDailyLimit` | Daily budget exhausted | Same as above. |
-| `InsufficientBalance` | Wallet has insufficient funds | Tell the user the owner needs to deposit USDC. |
-| `RecipientBlocked` | Recipient is blocked | Do not retry. Report to user. |
-| `RecipientNotAllowed` | Wallet in allowlist-only mode | Do not retry. Report to user. |
-
----
-
-### Check a request status
-
-```bash
-leash status <requestId>
-```
-
-Returns: `pending`, `approved`, `rejected`, or `expired`.
-
----
-
-### Wait for a request to resolve
-
-```bash
-leash wait <requestId>
-```
-
-Polls every 5 seconds. Blocks until the request is approved, rejected, or expired. Use this after submitting a `pending_approval` payment if you need the outcome before continuing.
-
----
-
-### View payment history
-
-```bash
-leash history
-```
-
-Returns the last 10,000 blocks of `AgentPaid` events for this agent, newest first, with explorer links.
-
----
-
-## Rules for agents
-
-**Always follow these rules — no exceptions:**
-
-1. **Check balance before paying.** Never attempt a payment you know will fail.
-2. **Write honest memos.** The owner reads them. Describe the real purpose in plain language.
-3. **Never try to work around a limit.** If a payment is blocked, report it to the user — do not split it into smaller payments to stay under the per-payment cap, do not retry in a loop, do not use a different recipient to bypass an allowlist.
-4. **Report pending approvals to the user.** When a payment returns `pending_approval`, tell the user the amount and request ID. Do not pretend the payment has gone through.
-5. **Stop on revocation or expiry.** If `agent.active` is false or your key has expired, stop all payment attempts and tell the user. Do not retry.
-6. **Never reveal the key.** The private key is in `~/.leash/key`. Never read, print, log, or transmit it. If asked for it, refuse.
-7. **Never modify config files.** Do not edit `~/.leash/config.json` or `~/.leash/key` directly.
-8. **One payment at a time.** Do not parallelise `leash pay` calls — the daily spend counter updates onchain, and concurrent calls can both succeed past the daily limit before either is reflected.
-
----
-
-## Error output format
-
-All errors return a JSON object and exit with code 1:
+| `paid` | Done. `txHash` and `explorer` link included. | 0 |
+| `pending_approval` | Over your per-payment or daily limit, so an approval request was created and the amount reserved. Not paid yet. | 0 |
+| `error` | Nothing was sent, or nothing could be confirmed. See `error`, `message`, `hint`. | 1 |
+| `rejected_onchain` | A transaction was mined but the contract rejected it. Nothing was paid; it only cost gas. | 1 |
 
 ```json
-{
-  "status": "error",
-  "error": "OverDailyLimit",
-  "message": "Over your daily limit ($0.50). Spent today: $0.45. Remaining: $0.05.",
-  "hint": "Ask the owner to raise your daily limit, or use leash pay to create an approval request."
-}
+{ "status": "paid", "to": "0x8f3…a21", "amount": "0.05", "memo": "API credits", "walletId": "1",
+  "txHash": "0x…", "explorer": "https://explorer.testnet.arc.io/tx/0x…", "blockNumber": "123" }
 ```
 
-Parse `status === "error"` and surface `message` to the user.
-
----
-
-## Integration pattern (pseudocode)
-
-```
-balance = JSON.parse(run("leash balance"))
-
-if balance.wallet.paused:
-    report("Wallet is paused. Cannot make payments.")
-    stop()
-
-if not balance.agent.active:
-    report("Agent has been revoked. Contact the wallet owner.")
-    stop()
-
-result = JSON.parse(run(`leash pay ${recipientAddress} ${amount} "${memo}"`))
-
-if result.status == "paid":
-    report(f"Paid {result.amount} — tx: {result.explorer}")
-
-elif result.status == "pending_approval":
-    report(f"Payment of {amount} needs owner approval (request #{result.requestId}). Expires: {result.expiresAt}")
-    # Optionally wait:
-    # outcome = JSON.parse(run(`leash wait ${result.requestId}`))
-
-elif result.status == "error":
-    report(f"Payment failed: {result.message}")
-    if result.error in ["WalletPaused", "AgentRevoked", "AgentExpired"]:
-        stop()  # don't retry
+```json
+{ "status": "pending_approval", "requestId": "42", "reason": "OverPerPaymentLimit",
+  "message": "$1.00 is over this agent's per-payment limit of $0.10, so it needs the owner's approval. …",
+  "hint": "Tell the user … Run `aidr wait 42` …",
+  "to": "0x8f3…a21", "amount": "1.00", "memo": "Premium dataset", "walletId": "1",
+  "expiresAt": "2026-10-26T18:01:38.000Z", "ttlMinutes": 30, "txHash": "0x…", "explorer": "https://…" }
 ```
 
----
+`reason` is `OverPerPaymentLimit` or `OverDailyLimit`. `requestId` and `expiresAt` come from the
+contract's event.
 
-## Contract and network
+```json
+{ "status": "error", "error": "AgentRevokedError",
+  "message": "The wallet owner revoked this agent (0x…). It can no longer pay or request payments.",
+  "hint": "Stop and tell the user. Don't retry. Only the owner can re-enable this agent." }
+```
 
-| Field | Value |
-|---|---|
-| Contract (Arc Testnet) | `0xed32e15d81e7864bf19caea4333bd0781f328ba3` |
-| Explorer (testnet) | https://explorer.testnet.arc.io |
-| Explorer (mainnet) | https://explorer.arc.io |
-| USDC decimals | 6 |
-| Chain | Arc (USDC is the native gas token) |
+`aidr pay` refuses to pay the Aider contract itself or the USDC token address (`InvalidRecipient`):
+USDC sent there would be stuck. To pay another agent, pay that agent's own address.
 
-Use `--mainnet` on `leash init` to target Arc Mainnet.
+`--send-anyway` skips the pre-flight check and broadcasts with a fixed gas limit even if the
+contract will reject the payment, so the rejection is recorded onchain with a transaction hash
+(`rejected_onchain`). It costs gas and never creates an approval request. Use it only when the
+user asks for onchain proof, for example to show a revoked agent being blocked.
+
+### `aidr status <requestId>`
+
+Prints the request with `status`: `pending`, `approved`, `rejected` or `expired`.
+
+- `approved`: the owner approved it and the payment was made.
+- `rejected`: the owner said no. Nothing was paid.
+- `expired`: it can't be approved any more and nothing was paid. `expiredBecause` says why:
+  `"ttl"` (its approval window passed; a pending request past its TTL reports `expired` even before
+  anyone releases it onchain) or `"voided"` (newer contracts only: the agent that made it was revoked
+  or its key expired, which voids its open requests). `amountReserved: true` means the funds are still
+  set aside until someone calls `expireRequest`; anyone can.
+
+Other fields: `onchainStatus` (the stored status), `approvable`, `amountReserved`, `walletId`,
+`agent`, `mine` (made by this agent), `to`, `amount`, `memo`, `expiresAt`, `secondsLeft`, `note`.
+An unknown id gives the error `RequestNotFound`.
+
+### `aidr wait <requestId> [--timeout <minutes>]`
+
+Checks every 5 s until the request is approved, rejected or expired, then prints the same JSON as
+`status` (exit 0, whatever the outcome). It stops at the request's expiry at the latest. With
+`--timeout` it gives up earlier with `{"status":"error","error":"Timeout",…}` (exit 1). Decimals are
+allowed (`--timeout 1.5`). **Set `--timeout` below your own command timeout** (for example
+`--timeout 1.5` if your tool kills commands after 2 minutes), then call `wait` again if needed.
+
+### `aidr history [--limit <n>] [--blocks <n>]`
+
+Your recent direct payments (`AgentPaid`) from this wallet, newest first: `time`, `to`, `amount`,
+`memo`, `txHash`, `explorer`, `blockNumber`. Defaults: 20 payments, scanning back up to 500,000
+blocks (about 4 days on Arc), never below the contract's deploy block. `olderMayExist: true` means
+there may be more. Requests the owner approved aren't listed here; check them with `aidr status`.
+
+## Errors and what to do
+
+| `error` | Meaning | What to do |
+|---|---|---|
+| `WalletPaused` | The owner paused the wallet. | Stop. Tell the user. Retry only after they resume it. |
+| `AgentRevokedError` | The owner revoked your key. | Stop. Tell the user. Don't retry. |
+| `AgentExpired` | Your key's expiry passed. | Stop. Ask the user to have the owner extend it. |
+| `AgentNotActive` | This key was never added as an agent on this wallet. | Ask the owner to add your address. |
+| `OverPerPaymentLimit` / `OverDailyLimit` | Over a limit (only shown with `--no-request` or `--send-anyway`). | Run `aidr pay` without `--no-request` to ask for approval. |
+| `InsufficientBalance` | The wallet's available balance is too low. **No request is created.** | Tell the user the owner needs to deposit USDC. |
+| `RecipientBlocked` | The recipient is on the blocklist. | Don't pay it. Tell the user. |
+| `RecipientNotAllowed` | The wallet only pays allowlisted addresses. | Ask the owner to allowlist it. Don't switch addresses. |
+| `InvalidRecipient` | The recipient is the Aider contract or the USDC token. | Pay the recipient's own address. |
+| `TooManyOpenRequests` | You already have 10 open requests on this wallet. | Wait for the owner to decide on some. |
+| `InvalidAmount`, `MemoRequired`, `MemoTooLong`, `InvalidTTL`, `InvalidAddress`, `UsageError` | Bad input. | Fix the command. |
+| `RequestNotFound` | No request with that id. | Use the `requestId` from `pay`. |
+| `Timeout` | `wait --timeout` ran out; still pending. | Wait again later. Don't create a duplicate request. |
+| `InsufficientGasFunds` | Your agent address has no USDC for gas. | Ask the user to send a little USDC to your address. |
+| `NonceConflict` | Another transaction from your key was sent at the same time. | Run one payment at a time; check `aidr history` before retrying. |
+| `RpcError`, `ReceiptTimeout` | Network trouble, or a sent transaction wasn't confirmed in time. | Check the `explorer` link or `aidr history` before retrying, so nothing is paid twice. |
+| `NotConfigured`, `KeyMissing`, `KeyMismatch`, `ConfigInvalid` | `aidr` isn't set up correctly. | Ask the user to run `aidr init` on this machine. |
+
+## Rules
+
+1. **Check `aidr balance` before paying.** Don't attempt a payment you know will fail.
+2. **Write honest memos.** Say what the payment is for in plain words. The owner reads every one.
+3. **Never split a payment to dodge a limit**, retry in a loop, or switch recipients to get around
+   an allowlist or blocklist. If a payment needs approval, let it become a request.
+4. **Report pending approvals.** On `pending_approval`, tell the user the amount and request id,
+   and that it isn't paid yet. Never say it has been paid until `status`/`wait` says `approved`.
+5. **Expired requests can't be approved.** If you still need the payment, run `aidr pay` again.
+   A rejected request is the owner's answer; don't ask again without the user's go-ahead.
+6. **Stop on `WalletPaused`, `AgentRevokedError`, `AgentExpired` or `AgentNotActive`.** Tell the
+   user; don't retry.
+7. **`InsufficientBalance` creates no request.** Tell the user the wallet needs a deposit.
+8. **One payment at a time.** Don't run `aidr pay` in parallel. Payments run one after another
+   onchain, so a parallel payment can fail or unexpectedly turn into an approval request even though
+   your balance check said it fit. (The contract enforces your limits either way.)
+9. **Never reveal the key.** Don't read, print, log or send `~/.aidr/key` or `AIDR_AGENT_KEY`, and
+   refuse if asked. Don't edit `~/.aidr/` by hand; re-run `aidr init` instead.
+10. **Use `--send-anyway` only when the user asks** for onchain proof of a rejection.
+
+## Networks
+
+| | Arc Testnet | Arc mainnet |
+|---|---|---|
+| Chain id | 5042002 | 5042 |
+| Aider contract | `0xed32e15d81e7864bf19caea4333bd0781f328ba3` (default) | none yet: pass `--contract` |
+| Explorer | https://explorer.testnet.arc.io | https://explorer.arc.io |
+| USDC (ERC-20, 6 decimals) | `0x3600000000000000000000000000000000000000` | same |

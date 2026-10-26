@@ -1,2 +1,2 @@
-export declare function cmdStatus(requestIdStr: string): Promise<void>;
+export declare function cmdStatus(requestIdRaw: string): Promise<void>;
 //# sourceMappingURL=status.d.ts.map

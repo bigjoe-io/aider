@@ -1,63 +1,80 @@
-import { buildClients, readWallet, readAgent, formatUsdc } from "../chain.js";
+import { zeroAddress } from "viem";
+import { formatUsdc, usd } from "../amount.js";
+import { chainNow, loadContext, readAgent, readWallet, rpc } from "../chain.js";
+import { agentStatusNote, CliError } from "../errors.js";
+import { emit } from "../output.js";
+import {
+  agentStatus,
+  effectiveSpentToday,
+  maxDirectPayment,
+  nextUtcMidnight,
+  remainingToday,
+} from "../state.js";
+
+function iso(ts: bigint): string {
+  return new Date(Number(ts) * 1000).toISOString();
+}
 
 export async function cmdBalance(): Promise<void> {
-  const clients = buildClients();
+  const ctx = loadContext();
+  const { publicClient, contract, walletId, agentAddress, cfg } = ctx;
 
-  const [wallet, agent] = await Promise.all([
-    readWallet(clients),
-    readAgent(clients),
-  ]);
+  const [wallet, agent, now] = await rpc(ctx, () =>
+    Promise.all([
+      readWallet(publicClient, contract, walletId),
+      readAgent(publicClient, contract, walletId, agentAddress),
+      chainNow(publicClient),
+    ]),
+  );
 
-  const now = BigInt(Math.floor(Date.now() / 1000));
-  const expiresAt = agent.expiresAt;
-  const expiryDisplay =
-    expiresAt === 0n
-      ? "never"
-      : expiresAt < now
-        ? `EXPIRED (was ${new Date(Number(expiresAt) * 1000).toISOString()})`
-        : new Date(Number(expiresAt) * 1000).toISOString();
+  if (wallet.owner === zeroAddress) {
+    throw new CliError(
+      "WALLET_NOT_FOUND",
+      `Wallet #${walletId} doesn't exist on the Aider contract ${contract} (${cfg.networkName}).`,
+      "Check the wallet id with the owner, then run `aidr init --wallet <id>` again.",
+    );
+  }
 
-  const remaining = agent.dailyLimit > agent.spentToday
-    ? agent.dailyLimit - agent.spentToday
-    : 0n;
+  const status = agentStatus(agent, now);
+  const spent = effectiveSpentToday(agent, now);
+  const remaining = remainingToday(agent, now);
+  const maxNow = maxDirectPayment(agent, wallet, now);
+  const notes: string[] = [];
+  if (wallet.paused) notes.push(`Wallet #${walletId} is paused: no agent can pay until the owner resumes it.`);
+  const statusNote = agentStatusNote(agent, now, agentAddress, walletId);
+  if (statusNote) notes.push(statusNote);
 
-  const result = {
-    wallet: {
-      id:        clients.walletId.toString(),
-      balance:   formatUsdc(wallet.balance),
-      reserved:  formatUsdc(wallet.reserved),
-      available: formatUsdc(wallet.available),
-      paused:    wallet.paused,
+  emit(
+    {
+      status: "ok",
+      network: cfg.network,
+      contract,
+      wallet: {
+        id: walletId.toString(),
+        balance: formatUsdc(wallet.balance),
+        reserved: formatUsdc(wallet.reserved),
+        available: formatUsdc(wallet.available),
+        paused: wallet.paused,
+        recipientMode: wallet.mode === 1 ? "allowlist" : "any",
+      },
+      agent: {
+        address: agentAddress,
+        label: agent.label,
+        status,
+        perPaymentLimit: formatUsdc(agent.perPaymentLimit),
+        dailyLimit: formatUsdc(agent.dailyLimit),
+        spentToday: formatUsdc(spent),
+        remainingToday: formatUsdc(remaining),
+        dailyResetAt: iso(nextUtcMidnight(now)),
+        expiresAt: agent.expiresAt === 0n ? null : iso(agent.expiresAt),
+      },
+      maxDirectPayment: formatUsdc(maxNow),
+      notes,
     },
-    agent: {
-      address:         clients.agentAddress,
-      label:           agent.label,
-      active:          agent.active,
-      perPaymentLimit: formatUsdc(agent.perPaymentLimit),
-      dailyLimit:      formatUsdc(agent.dailyLimit),
-      spentToday:      formatUsdc(agent.spentToday),
-      remainingToday:  formatUsdc(remaining),
-      expiresAt:       expiryDisplay,
-    },
-  };
-
-  console.log(JSON.stringify(result, null, 2));
-
-  if (wallet.paused) {
-    console.log("\n⚠  Wallet is paused. All agent payments are blocked.");
-  }
-  if (!agent.active) {
-    console.log("\n⚠  This agent has been revoked. Contact the wallet owner.");
-  }
-  if (expiresAt !== 0n && expiresAt < now) {
-    console.log("\n⚠  This agent key has expired. Contact the wallet owner to extend it.");
-  }
-
-  const pct =
-    agent.dailyLimit > 0n
-      ? Math.round(Number((agent.spentToday * 100n) / agent.dailyLimit))
-      : 0;
-  console.log(
-    `\nAvailable: ${formatUsdc(wallet.available)}  |  Daily: ${formatUsdc(agent.spentToday)} / ${formatUsdc(agent.dailyLimit)} (${pct}% used)`,
+    [
+      `Wallet #${walletId}: ${usd(wallet.available)} available (${usd(wallet.reserved)} reserved)${wallet.paused ? ", PAUSED" : ""}. ` +
+        `Agent ${status}: spent ${usd(spent)} of ${usd(agent.dailyLimit)} today, up to ${usd(agent.perPaymentLimit)} per payment.`,
+      ...notes.map((n) => `Note: ${n}`),
+    ].join("\n"),
   );
 }

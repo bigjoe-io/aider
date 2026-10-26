@@ -1,64 +1,241 @@
+import { getAddress, isAddress, isAddressEqual, zeroAddress, type Address, type Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { saveConfig, die } from "../config.js";
+import { chainNow, detectVersion, makePublicClient, readAgent, readWallet } from "../chain.js";
+import { configPath, keyPath, normalizeKey, saveConfig, type AidrConfig } from "../config.js";
+import { agentStatusNote, CliError, decodeError, explainError } from "../errors.js";
+import { NETWORKS, USDC_ADDRESS, chainFor, type NetworkName, type NetworkPreset } from "../networks.js";
+import { emit, note, registerSecret } from "../output.js";
+import { agentStatus } from "../state.js";
 
-// Default Arc Testnet values
-const DEFAULT_CONTRACT  = "0xed32e15d81e7864bf19caea4333bd0781f328ba3";
-const DEFAULT_RPC       = "https://rpc.testnet.arc.io";
-const DEFAULT_CHAIN_ID  = 5042002;
-const DEFAULT_EXPLORER  = "https://explorer.testnet.arc.io";
-
-const MAINNET_RPC       = "https://rpc.mainnet.arc.io";
-const MAINNET_CHAIN_ID  = 5042;
-const MAINNET_EXPLORER  = "https://explorer.arc.io";
-
-export async function cmdInit(opts: {
+export interface InitOptions {
   wallet: string;
-  key: string;
-  contract?: string;
+  key?: string;
+  network?: string;
   mainnet?: boolean;
-}): Promise<void> {
-  const { wallet, key, contract, mainnet } = opts;
+  contract?: string;
+  rpc?: string;
+  deployBlock?: string;
+}
 
-  if (!wallet || !key) {
-    die("Both --wallet and --key are required.\nExample: leash init --wallet 1 --key 0xabc...");
+const KEY_ENV = "AIDR_AGENT_KEY";
+
+function resolveNetwork(opts: InitOptions): NetworkPreset {
+  const requested = opts.network?.trim().toLowerCase();
+  if (requested !== undefined && requested !== "testnet" && requested !== "mainnet") {
+    throw new CliError("InvalidNetwork", `Unknown network "${opts.network}".`, "Use --network testnet or --network mainnet.");
   }
+  if (opts.mainnet && requested === "testnet") {
+    throw new CliError("InvalidNetwork", "--mainnet and --network testnet contradict each other.", "Pass only one of them.");
+  }
+  const name: NetworkName = opts.mainnet ? "mainnet" : (requested ?? "testnet");
+  return NETWORKS[name];
+}
 
-  let walletId: bigint;
+function resolveKey(opts: InitOptions): Hex {
+  const fromFlag = opts.key;
+  const fromEnv = process.env[KEY_ENV];
+  registerSecret(fromFlag);
+  registerSecret(fromEnv);
+
+  const flagKey = fromFlag !== undefined ? normalizeKey(fromFlag) : undefined;
+  const envKey = fromEnv !== undefined && fromEnv.trim() !== "" ? normalizeKey(fromEnv) : undefined;
+
+  if (fromFlag !== undefined && !flagKey) {
+    throw new CliError("KeyInvalid", "--key is not a valid private key (expected 64 hex characters, 0x optional).", `Prefer: export ${KEY_ENV}=0x<the agent's private key>`);
+  }
+  if (envKey === null) {
+    throw new CliError("KeyInvalid", `${KEY_ENV} is not a valid private key (expected 64 hex characters, 0x optional).`, `Set it again: export ${KEY_ENV}=0x<the agent's private key>`);
+  }
+  if (flagKey && envKey && flagKey !== envKey) {
+    throw new CliError("KeyConflict", `--key and ${KEY_ENV} hold different keys.`, `Pass only one. ${KEY_ENV} is preferred: it keeps the key out of shell history.`);
+  }
+  const key = envKey ?? flagKey;
+  if (!key) {
+    throw new CliError(
+      "KeyMissing",
+      "No agent key given.",
+      `On the agent's machine run: export ${KEY_ENV}=0x<the agent's own private key> && aidr init --wallet <walletId>. Never use the wallet owner's key.`,
+    );
+  }
+  if (!envKey) {
+    note(`Tip: pass the key in ${KEY_ENV} instead of --key so it stays out of your shell history.`);
+  }
+  return key;
+}
+
+function parseAddressOption(value: string, flag: string): Address {
+  const v = value.trim();
+  if (!isAddress(v)) {
+    throw new CliError("InvalidAddress", `${flag} "${value}" is not a valid address.`, "Pass a 0x-prefixed 20-byte address (check the checksum if it's mixed-case).");
+  }
+  return getAddress(v);
+}
+
+function parseRpc(value: string): string {
+  let url: URL;
   try {
-    walletId = BigInt(wallet);
+    url = new URL(value.trim());
   } catch {
-    die(`Invalid wallet ID "${wallet}". Must be a number.`);
+    throw new CliError("InvalidRpcUrl", `--rpc "${value}" is not a URL.`, "Pass an http(s) URL, e.g. --rpc https://rpc.testnet.arc.io");
+  }
+  if (url.protocol !== "http:" && url.protocol !== "https:") {
+    throw new CliError("InvalidRpcUrl", `--rpc must be an http(s) URL, got ${url.protocol}`, "Pass an http(s) URL, e.g. --rpc https://rpc.testnet.arc.io");
+  }
+  return value.trim();
+}
+
+export async function cmdInit(opts: InitOptions): Promise<void> {
+  const walletRaw = opts.wallet.trim();
+  if (!/^\d+$/.test(walletRaw) || BigInt(walletRaw) === 0n) {
+    throw new CliError("InvalidWalletId", `--wallet "${opts.wallet}" is not a wallet id.`, "Wallet ids are whole numbers starting at 1, e.g. --wallet 1.");
+  }
+  const walletId = BigInt(walletRaw);
+
+  const network = resolveNetwork(opts);
+  const key = resolveKey(opts);
+  const agentAddress = privateKeyToAccount(key).address;
+
+  let contract: Address;
+  if (opts.contract !== undefined) {
+    contract = parseAddressOption(opts.contract, "--contract");
+  } else if (network.defaultContract) {
+    contract = getAddress(network.defaultContract);
+  } else {
+    throw new CliError(
+      "ContractRequired",
+      `Aider has no default deployment on ${network.label} (${network.name}) yet, so --contract is required.`,
+      `Run: aidr init --wallet ${walletId} --network ${network.name} --contract <Aider contract address>`,
+    );
+  }
+  if (isAddressEqual(contract, zeroAddress) || isAddressEqual(contract, USDC_ADDRESS)) {
+    throw new CliError("InvalidAddress", `${contract} is not an Aider contract.`, "Pass the Aider contract address with --contract.");
   }
 
-  // Derive agent address from key (never print the key)
-  let agentAddress: string;
+  let deployBlock: number;
+  if (opts.deployBlock !== undefined) {
+    const d = opts.deployBlock.trim();
+    if (!/^\d+$/.test(d) || !Number.isSafeInteger(Number(d))) {
+      throw new CliError("InvalidDeployBlock", `--deploy-block "${opts.deployBlock}" is not a block number.`, "Pass the block the contract was deployed in, e.g. --deploy-block 69187895.");
+    }
+    deployBlock = Number(d);
+  } else {
+    const isDefault = network.defaultContract !== undefined && isAddressEqual(contract, network.defaultContract);
+    deployBlock = isDefault ? (network.defaultDeployBlock ?? 0) : 0;
+  }
+
+  const rpcUrl = opts.rpc !== undefined ? parseRpc(opts.rpc) : network.rpcUrl;
+  const chain = chainFor(network.chainId, rpcUrl, network.explorerUrl);
+  const publicClient = makePublicClient(chain, rpcUrl);
+
+  // 1. The RPC must answer, and be on the chain this network expects.
+  let chainId: number;
   try {
-    const normalized = key.startsWith("0x") ? key : `0x${key}`;
-    const account = privateKeyToAccount(normalized as `0x${string}`);
-    agentAddress = account.address;
-  } catch {
-    die("Invalid private key. Must be a 32-byte hex string.");
+    chainId = await publicClient.getChainId();
+  } catch (err) {
+    const d = decodeError(err);
+    throw new CliError(
+      "RpcUnreachable",
+      `Couldn't reach the ${network.label} RPC at ${rpcUrl}${d.detail ? ` (${d.detail})` : ""}. Nothing was saved.`,
+      "Check the internet connection, or pass a working RPC with --rpc <url>.",
+    );
+  }
+  if (chainId !== network.chainId) {
+    throw new CliError(
+      "ChainMismatch",
+      `The RPC at ${rpcUrl} is chain ${chainId}, but ${network.label} is chain ${network.chainId}. Nothing was saved.`,
+      "Use the RPC that matches --network, or the --network that matches the RPC.",
+    );
   }
 
-  const rpcUrl      = mainnet ? MAINNET_RPC      : DEFAULT_RPC;
-  const chainId     = mainnet ? MAINNET_CHAIN_ID  : DEFAULT_CHAIN_ID;
-  const explorerUrl = mainnet ? MAINNET_EXPLORER  : DEFAULT_EXPLORER;
-  const contractAddr = contract ?? DEFAULT_CONTRACT;
+  // 2. There must be a contract at the address.
+  let code: Hex | undefined;
+  try {
+    code = await publicClient.getCode({ address: contract });
+  } catch (err) {
+    const d = decodeError(err);
+    throw new CliError("RpcUnreachable", `Couldn't read ${contract} from ${rpcUrl}${d.detail ? ` (${d.detail})` : ""}. Nothing was saved.`, "Try again, or pass a working RPC with --rpc <url>.");
+  }
+  if (!code || code === "0x") {
+    throw new CliError(
+      "NoContractCode",
+      `There is no contract at ${contract} on ${network.label}. Nothing was saved.`,
+      network.defaultContract
+        ? `Check --contract and --network. The default ${network.label} contract is ${getAddress(network.defaultContract)}.`
+        : "Check --contract and --network.",
+    );
+  }
 
-  saveConfig(walletId, agentAddress, key, contractAddr, rpcUrl, chainId, explorerUrl);
+  // 3. It must behave like Aider, and tell us about this wallet and agent.
+  const [wallet, agent, now, version] = await Promise.all([
+    readWallet(publicClient, contract, walletId),
+    readAgent(publicClient, contract, walletId, agentAddress),
+    chainNow(publicClient),
+    detectVersion(publicClient, contract),
+  ]).catch((err: unknown) => {
+    const d = decodeError(err);
+    if (d.kind === "rpc") {
+      const e = explainError(d, { rpcUrl });
+      throw new CliError("RpcUnreachable", `${e.message} Nothing was saved.`, e.hint);
+    }
+    throw new CliError(
+      "NotAnAiderContract",
+      `The contract at ${contract} doesn't answer like an Aider contract (${d.name}). Nothing was saved.`,
+      "Check --contract: it must be the Aider contract address.",
+    );
+  });
 
-  const result = {
-    status:          "configured",
-    walletId:        walletId.toString(),
+  if (wallet.owner !== zeroAddress && isAddressEqual(wallet.owner, agentAddress)) {
+    throw new CliError(
+      "OwnerKeyNotAllowed",
+      `This key is the OWNER of wallet #${walletId}. aidr must run with a separate agent key, never the owner's key. Nothing was saved.`,
+      "Create a new key for the agent, add its address as an agent in the Aider app, and use that key here.",
+    );
+  }
+
+  const warnings: string[] = [];
+  if (wallet.owner === zeroAddress) {
+    warnings.push(`Wallet #${walletId} doesn't exist on this contract yet. Check the wallet id with the owner.`);
+  } else {
+    const n = agentStatusNote(agent, now, agentAddress, walletId);
+    if (n) warnings.push(n);
+    if (wallet.paused) warnings.push(`Wallet #${walletId} is paused: payments are blocked until the owner resumes it.`);
+  }
+
+  const cfg: AidrConfig = {
+    version: 1,
+    network: network.name,
+    networkName: network.label,
+    chainId: network.chainId,
+    rpcUrl,
+    explorerUrl: network.explorerUrl,
+    contract,
+    deployBlock,
+    walletId: walletId.toString(),
     agentAddress,
-    contractAddress: contractAddr,
-    network:         mainnet ? "Arc Mainnet" : "Arc Testnet",
-    configSaved:     "~/.leash/config.json (mode 600)",
-    keySaved:        "~/.leash/key (mode 600, never printed)",
   };
+  saveConfig(cfg, key);
 
-  console.log(JSON.stringify(result, null, 2));
-  console.log(
-    `\nConfigured. Agent ${agentAddress} on wallet #${walletId}. Key stored at ~/.leash/key.`,
+  const status = agentStatus(agent, now);
+  emit(
+    {
+      status: "configured",
+      network: network.name,
+      networkName: network.label,
+      chainId: network.chainId,
+      rpcUrl,
+      contract,
+      contractVersion: version,
+      deployBlock,
+      walletId: walletId.toString(),
+      agentAddress,
+      agentStatus: wallet.owner === zeroAddress ? "not_added" : status,
+      configFile: configPath(),
+      keyFile: keyPath(),
+      warnings,
+    },
+    [
+      `Configured agent ${agentAddress} on wallet #${walletId} (${network.label}). Key saved to ${keyPath()} (mode 600).`,
+      ...warnings.map((w) => `Warning: ${w}`),
+    ].join("\n"),
   );
 }

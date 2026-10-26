@@ -2,223 +2,188 @@ import {
   createPublicClient,
   createWalletClient,
   http,
-  publicActions,
-  type Address,
-  type PublicClient,
-  type WalletClient,
-  type Chain,
   type Account,
+  type Address,
+  type Chain,
+  type PublicClient,
+  type Transport,
+  type WalletClient,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { arcTestnet, arc } from "viem/chains";
-import { loadConfig, loadPrivateKey, die } from "./config.js";
-import { LEASH_ABI } from "./abi.js";
+import { AIDER_ABI } from "./abi.js";
+import { loadConfig, loadKey, type AidrConfig } from "./config.js";
+import { decodeError, isContractRejection, toCliError } from "./errors.js";
+import { chainFor } from "./networks.js";
+import type { AgentRecord, RequestRecord, RequestStateV2 } from "./state.js";
 
-// ── custom error selectors (keccak256 first 4 bytes) ─────────────────────────
-export const ERROR_SELECTORS: Record<string, string> = {
-  "0x3c1bfd9e": "WalletPaused",
-  "0x3d4fa12a": "AgentRevokedError",
-  "0x8af8ae35": "AgentExpired",
-  "0x29c9d28e": "AgentNotActive",
-  "0x53c98e2e": "OverPerPaymentLimit",
-  "0x1f2a2005": "OverDailyLimit",
-  "0xf4d678b8": "InsufficientBalance",
-  "0xd92e233d": "ZeroAddress",
-  "0x6c7bcc15": "RecipientNotAllowed",
-  "0x55b6cf7f": "RecipientBlocked",
-};
-
-// Errors that trigger automatic requestPayment fallback
-export const LIMIT_ERRORS = new Set(["OverPerPaymentLimit", "OverDailyLimit", "InsufficientBalance"]);
-
-// ── chain resolution ──────────────────────────────────────────────────────────
-
-function resolveChain(chainId: number, rpcUrl: string): Chain {
-  const base: Chain =
-    chainId === 5042
-      ? arc
-      : chainId === 5042002
-        ? arcTestnet
-        : ({
-            id: chainId,
-            name: `Chain ${chainId}`,
-            nativeCurrency: { name: "USDC", symbol: "USDC", decimals: 18 },
-            rpcUrls: { default: { http: [rpcUrl] } },
-          } as Chain);
-
-  // Always override the RPC with the user-configured URL
-  return {
-    ...base,
-    rpcUrls: { ...base.rpcUrls, default: { http: [rpcUrl] } },
-  };
-}
-
-// ── client factory ────────────────────────────────────────────────────────────
-
-export interface LeashClients {
-  publicClient: PublicClient;
-  walletClient: WalletClient & ReturnType<typeof publicActions>;
-  account: Account;
-  contractAddress: Address;
+export interface Ctx {
+  cfg: AidrConfig;
+  chain: Chain;
+  publicClient: PublicClient<Transport, Chain>;
+  contract: Address;
   walletId: bigint;
   agentAddress: Address;
-  explorerUrl: string;
 }
 
-export function buildClients(): LeashClients {
-  const cfg = loadConfig();
-  const privateKey = loadPrivateKey();
-  const account = privateKeyToAccount(privateKey);
+export interface SignerCtx extends Ctx {
+  account: Account;
+  walletClient: WalletClient<Transport, Chain, Account>;
+}
 
-  if (account.address.toLowerCase() !== cfg.agentAddress.toLowerCase()) {
-    die(
-      `Key mismatch: key corresponds to ${account.address} but config says agent is ${cfg.agentAddress}.\nRe-run \`leash init\` to fix.`,
-    );
-  }
-
-  const chain = resolveChain(cfg.chainId, cfg.rpcUrl);
-
-  const publicClient = createPublicClient({
+export function makePublicClient(chain: Chain, rpcUrl: string): PublicClient<Transport, Chain> {
+  return createPublicClient({
     chain,
-    transport: http(cfg.rpcUrl),
+    transport: http(rpcUrl, { timeout: 20_000, retryCount: 2 }),
+    pollingInterval: 1_000,
   });
+}
 
+/** Read-only context from ~/.aidr/config.json (no key needed). */
+export function loadContext(): Ctx {
+  const cfg = loadConfig();
+  const chain = chainFor(cfg.chainId, cfg.rpcUrl, cfg.explorerUrl);
+  return {
+    cfg,
+    chain,
+    publicClient: makePublicClient(chain, cfg.rpcUrl),
+    contract: cfg.contract,
+    walletId: BigInt(cfg.walletId),
+    agentAddress: cfg.agentAddress,
+  };
+}
+
+/** Context that can sign as the agent (loads ~/.aidr/key). */
+export function loadSignerContext(): SignerCtx {
+  const ctx = loadContext();
+  const account = privateKeyToAccount(loadKey(ctx.cfg));
   const walletClient = createWalletClient({
     account,
-    chain,
-    transport: http(cfg.rpcUrl),
-  }).extend(publicActions);
-
-  return {
-    publicClient,
-    walletClient,
-    account,
-    contractAddress: cfg.contractAddress as Address,
-    walletId: BigInt(cfg.walletId),
-    agentAddress: cfg.agentAddress as Address,
-    explorerUrl: cfg.explorerUrl,
-  };
+    chain: ctx.chain,
+    transport: http(ctx.cfg.rpcUrl, { timeout: 20_000, retryCount: 2 }),
+    pollingInterval: 1_000,
+  });
+  return { ...ctx, account, walletClient };
 }
 
-// ── contract helpers ──────────────────────────────────────────────────────────
+export function txUrl(cfg: Pick<AidrConfig, "explorerUrl">, hash: string): string {
+  return `${cfg.explorerUrl.replace(/\/+$/, "")}/tx/${hash}`;
+}
+
+export function addressUrl(cfg: Pick<AidrConfig, "explorerUrl">, address: string): string {
+  return `${cfg.explorerUrl.replace(/\/+$/, "")}/address/${address}`;
+}
+
+/** Wraps RPC/contract failures of read calls into friendly CliErrors. */
+export async function rpc<T>(ctx: Pick<Ctx, "cfg">, fn: () => Promise<T>): Promise<T> {
+  try {
+    return await fn();
+  } catch (err) {
+    throw toCliError(decodeError(err), { rpcUrl: ctx.cfg.rpcUrl });
+  }
+}
+
+/** Latest block timestamp: the contract's notion of "now". */
+export async function chainNow(publicClient: PublicClient<Transport, Chain>): Promise<bigint> {
+  const block = await publicClient.getBlock({ blockTag: "latest" });
+  return block.timestamp;
+}
+
+export interface WalletRecord {
+  owner: Address;
+  balance: bigint;
+  reserved: bigint;
+  available: bigint;
+  paused: boolean;
+  mode: number;
+}
 
 export async function readWallet(
-  clients: LeashClients,
-): Promise<{ balance: bigint; reserved: bigint; available: bigint; paused: boolean; mode: number }> {
-  const result = await clients.publicClient.readContract({
-    address: clients.contractAddress,
-    abi: LEASH_ABI,
+  publicClient: PublicClient<Transport, Chain>,
+  contract: Address,
+  walletId: bigint,
+): Promise<WalletRecord> {
+  const [owner, balance, reserved, available, paused, mode] = await publicClient.readContract({
+    address: contract,
+    abi: AIDER_ABI,
     functionName: "getWallet",
-    args: [clients.walletId],
+    args: [walletId],
   });
-  return {
-    balance:   result[1],
-    reserved:  result[2],
-    available: result[3],
-    paused:    result[4],
-    mode:      result[5],
-  };
+  return { owner, balance, reserved, available, paused, mode };
 }
 
-export async function readAgent(clients: LeashClients): Promise<{
-  label: string;
-  perPaymentLimit: bigint;
-  dailyLimit: bigint;
-  expiresAt: bigint;
-  active: boolean;
-  spentToday: bigint;
-  dayStart: bigint;
-}> {
-  const result = await clients.publicClient.readContract({
-    address: clients.contractAddress,
-    abi: LEASH_ABI,
-    functionName: "getAgent",
-    args: [clients.walletId, clients.agentAddress],
-  });
-  return {
-    label:           result[0],
-    perPaymentLimit: result[1],
-    dailyLimit:      result[2],
-    expiresAt:       result[3],
-    active:          result[4],
-    spentToday:      result[5],
-    dayStart:        result[6],
-  };
+export async function readAgent(
+  publicClient: PublicClient<Transport, Chain>,
+  contract: Address,
+  walletId: bigint,
+  agent: Address,
+): Promise<AgentRecord> {
+  const [label, perPaymentLimit, dailyLimit, expiresAt, active, spentToday, dayStart] =
+    await publicClient.readContract({
+      address: contract,
+      abi: AIDER_ABI,
+      functionName: "getAgent",
+      args: [walletId, agent],
+    });
+  return { label, perPaymentLimit, dailyLimit, expiresAt, active, spentToday, dayStart };
 }
 
 export async function readRequest(
-  clients: LeashClients,
+  publicClient: PublicClient<Transport, Chain>,
+  contract: Address,
   requestId: bigint,
-): Promise<{
-  walletId: bigint;
-  agent: string;
-  to: string;
-  amount: bigint;
-  memo: string;
-  expiresAt: bigint;
-  status: number;
-}> {
-  const r = await clients.publicClient.readContract({
-    address: clients.contractAddress,
-    abi: LEASH_ABI,
+): Promise<RequestRecord> {
+  const r = await publicClient.readContract({
+    address: contract,
+    abi: AIDER_ABI,
     functionName: "getRequest",
     args: [requestId],
   });
   return {
-    walletId:  r.walletId,
-    agent:     r.agent,
-    to:        r.to,
-    amount:    r.amount,
-    memo:      r.memo,
+    walletId: r.walletId,
+    agent: r.agent,
+    to: r.to,
+    amount: r.amount,
+    memo: r.memo,
     expiresAt: r.expiresAt,
-    status:    r.status,
+    status: r.status,
   };
 }
 
-// ── error decoding ────────────────────────────────────────────────────────────
-
-export function decodeRevertError(err: unknown): string {
-  const msg = String(err);
-  // viem encodes custom errors in the message
-  for (const [selector, name] of Object.entries(ERROR_SELECTORS)) {
-    if (msg.includes(selector) || msg.includes(name)) return name;
+/**
+ * v2's getRequestState(id). Returns null on a v1 contract (the function doesn't exist there and
+ * the call reverts without data) or when the request doesn't exist. RPC failures are rethrown.
+ */
+export async function readRequestStateV2(
+  publicClient: PublicClient<Transport, Chain>,
+  contract: Address,
+  requestId: bigint,
+): Promise<RequestStateV2 | null> {
+  try {
+    const [status, approvable, releasable] = await publicClient.readContract({
+      address: contract,
+      abi: AIDER_ABI,
+      functionName: "getRequestState",
+      args: [requestId],
+    });
+    return { status, approvable, releasable };
+  } catch (err) {
+    const d = decodeError(err);
+    if (isContractRejection(d) || d.kind === "no_code") return null;
+    throw err;
   }
-  // Fallback: extract the error name from viem's ContractFunctionRevertedError
-  const match = msg.match(/Error: (\w+)\(/);
-  if (match) return match[1];
-  return "UnknownError";
 }
 
-// ── formatting helpers ────────────────────────────────────────────────────────
-
-export const USDC_DECIMALS = 6n;
-export const USDC_SCALE = 10n ** USDC_DECIMALS;
-
-export function formatUsdc(raw: bigint): string {
-  const whole = raw / USDC_SCALE;
-  const frac  = raw % USDC_SCALE;
-  return `$${whole}.${frac.toString().padStart(6, "0").slice(0, 2)}`;
-}
-
-export function parseUsdc(str: string): bigint {
-  // Accept "1.50", "1", ".50"
-  const clean = str.replace(/^\$/, "");
-  const [whole = "0", frac = "0"] = clean.split(".");
-  const fracPadded = frac.slice(0, 6).padEnd(6, "0");
-  return BigInt(whole) * USDC_SCALE + BigInt(fracPadded);
-}
-
-export const REQUEST_STATUS: Record<number, string> = {
-  0: "pending",
-  1: "approved",
-  2: "rejected",
-  3: "expired",
-};
-
-export function txUrl(explorerUrl: string, txHash: string): string {
-  return `${explorerUrl.replace(/\/$/, "")}/tx/${txHash}`;
-}
-
-export function addrUrl(explorerUrl: string, address: string): string {
-  return `${explorerUrl.replace(/\/$/, "")}/address/${address}`;
+/** Detects the v2 contract by calling MAX_REQUEST_TTL() (missing on v1). */
+export async function detectVersion(
+  publicClient: PublicClient<Transport, Chain>,
+  contract: Address,
+): Promise<"v1" | "v2"> {
+  try {
+    await publicClient.readContract({ address: contract, abi: AIDER_ABI, functionName: "MAX_REQUEST_TTL" });
+    return "v2";
+  } catch (err) {
+    const d = decodeError(err);
+    if (isContractRejection(d) || d.kind === "no_code") return "v1";
+    throw err;
+  }
 }

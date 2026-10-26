@@ -1,105 +1,83 @@
-import { createPublicClient, createWalletClient, http, publicActions, } from "viem";
+import { createPublicClient, createWalletClient, http, } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { arcTestnet, arc } from "viem/chains";
-import { loadConfig, loadPrivateKey, die } from "./config.js";
-import { LEASH_ABI } from "./abi.js";
-// ── custom error selectors (keccak256 first 4 bytes) ─────────────────────────
-export const ERROR_SELECTORS = {
-    "0x3c1bfd9e": "WalletPaused",
-    "0x3d4fa12a": "AgentRevokedError",
-    "0x8af8ae35": "AgentExpired",
-    "0x29c9d28e": "AgentNotActive",
-    "0x53c98e2e": "OverPerPaymentLimit",
-    "0x1f2a2005": "OverDailyLimit",
-    "0xf4d678b8": "InsufficientBalance",
-    "0xd92e233d": "ZeroAddress",
-    "0x6c7bcc15": "RecipientNotAllowed",
-    "0x55b6cf7f": "RecipientBlocked",
-};
-// Errors that trigger automatic requestPayment fallback
-export const LIMIT_ERRORS = new Set(["OverPerPaymentLimit", "OverDailyLimit", "InsufficientBalance"]);
-// ── chain resolution ──────────────────────────────────────────────────────────
-function resolveChain(chainId, rpcUrl) {
-    const base = chainId === 5042
-        ? arc
-        : chainId === 5042002
-            ? arcTestnet
-            : {
-                id: chainId,
-                name: `Chain ${chainId}`,
-                nativeCurrency: { name: "USDC", symbol: "USDC", decimals: 18 },
-                rpcUrls: { default: { http: [rpcUrl] } },
-            };
-    // Always override the RPC with the user-configured URL
-    return {
-        ...base,
-        rpcUrls: { ...base.rpcUrls, default: { http: [rpcUrl] } },
-    };
-}
-export function buildClients() {
-    const cfg = loadConfig();
-    const privateKey = loadPrivateKey();
-    const account = privateKeyToAccount(privateKey);
-    if (account.address.toLowerCase() !== cfg.agentAddress.toLowerCase()) {
-        die(`Key mismatch: key corresponds to ${account.address} but config says agent is ${cfg.agentAddress}.\nRe-run \`leash init\` to fix.`);
-    }
-    const chain = resolveChain(cfg.chainId, cfg.rpcUrl);
-    const publicClient = createPublicClient({
+import { AIDER_ABI } from "./abi.js";
+import { loadConfig, loadKey } from "./config.js";
+import { decodeError, isContractRejection, toCliError } from "./errors.js";
+import { chainFor } from "./networks.js";
+export function makePublicClient(chain, rpcUrl) {
+    return createPublicClient({
         chain,
-        transport: http(cfg.rpcUrl),
+        transport: http(rpcUrl, { timeout: 20_000, retryCount: 2 }),
+        pollingInterval: 1_000,
     });
-    const walletClient = createWalletClient({
-        account,
-        chain,
-        transport: http(cfg.rpcUrl),
-    }).extend(publicActions);
+}
+/** Read-only context from ~/.aidr/config.json (no key needed). */
+export function loadContext() {
+    const cfg = loadConfig();
+    const chain = chainFor(cfg.chainId, cfg.rpcUrl, cfg.explorerUrl);
     return {
-        publicClient,
-        walletClient,
-        account,
-        contractAddress: cfg.contractAddress,
+        cfg,
+        chain,
+        publicClient: makePublicClient(chain, cfg.rpcUrl),
+        contract: cfg.contract,
         walletId: BigInt(cfg.walletId),
         agentAddress: cfg.agentAddress,
-        explorerUrl: cfg.explorerUrl,
     };
 }
-// ── contract helpers ──────────────────────────────────────────────────────────
-export async function readWallet(clients) {
-    const result = await clients.publicClient.readContract({
-        address: clients.contractAddress,
-        abi: LEASH_ABI,
+/** Context that can sign as the agent (loads ~/.aidr/key). */
+export function loadSignerContext() {
+    const ctx = loadContext();
+    const account = privateKeyToAccount(loadKey(ctx.cfg));
+    const walletClient = createWalletClient({
+        account,
+        chain: ctx.chain,
+        transport: http(ctx.cfg.rpcUrl, { timeout: 20_000, retryCount: 2 }),
+        pollingInterval: 1_000,
+    });
+    return { ...ctx, account, walletClient };
+}
+export function txUrl(cfg, hash) {
+    return `${cfg.explorerUrl.replace(/\/+$/, "")}/tx/${hash}`;
+}
+export function addressUrl(cfg, address) {
+    return `${cfg.explorerUrl.replace(/\/+$/, "")}/address/${address}`;
+}
+/** Wraps RPC/contract failures of read calls into friendly CliErrors. */
+export async function rpc(ctx, fn) {
+    try {
+        return await fn();
+    }
+    catch (err) {
+        throw toCliError(decodeError(err), { rpcUrl: ctx.cfg.rpcUrl });
+    }
+}
+/** Latest block timestamp: the contract's notion of "now". */
+export async function chainNow(publicClient) {
+    const block = await publicClient.getBlock({ blockTag: "latest" });
+    return block.timestamp;
+}
+export async function readWallet(publicClient, contract, walletId) {
+    const [owner, balance, reserved, available, paused, mode] = await publicClient.readContract({
+        address: contract,
+        abi: AIDER_ABI,
         functionName: "getWallet",
-        args: [clients.walletId],
+        args: [walletId],
     });
-    return {
-        balance: result[1],
-        reserved: result[2],
-        available: result[3],
-        paused: result[4],
-        mode: result[5],
-    };
+    return { owner, balance, reserved, available, paused, mode };
 }
-export async function readAgent(clients) {
-    const result = await clients.publicClient.readContract({
-        address: clients.contractAddress,
-        abi: LEASH_ABI,
+export async function readAgent(publicClient, contract, walletId, agent) {
+    const [label, perPaymentLimit, dailyLimit, expiresAt, active, spentToday, dayStart] = await publicClient.readContract({
+        address: contract,
+        abi: AIDER_ABI,
         functionName: "getAgent",
-        args: [clients.walletId, clients.agentAddress],
+        args: [walletId, agent],
     });
-    return {
-        label: result[0],
-        perPaymentLimit: result[1],
-        dailyLimit: result[2],
-        expiresAt: result[3],
-        active: result[4],
-        spentToday: result[5],
-        dayStart: result[6],
-    };
+    return { label, perPaymentLimit, dailyLimit, expiresAt, active, spentToday, dayStart };
 }
-export async function readRequest(clients, requestId) {
-    const r = await clients.publicClient.readContract({
-        address: clients.contractAddress,
-        abi: LEASH_ABI,
+export async function readRequest(publicClient, contract, requestId) {
+    const r = await publicClient.readContract({
+        address: contract,
+        abi: AIDER_ABI,
         functionName: "getRequest",
         args: [requestId],
     });
@@ -113,45 +91,38 @@ export async function readRequest(clients, requestId) {
         status: r.status,
     };
 }
-// ── error decoding ────────────────────────────────────────────────────────────
-export function decodeRevertError(err) {
-    const msg = String(err);
-    // viem encodes custom errors in the message
-    for (const [selector, name] of Object.entries(ERROR_SELECTORS)) {
-        if (msg.includes(selector) || msg.includes(name))
-            return name;
+/**
+ * v2's getRequestState(id). Returns null on a v1 contract (the function doesn't exist there and
+ * the call reverts without data) or when the request doesn't exist. RPC failures are rethrown.
+ */
+export async function readRequestStateV2(publicClient, contract, requestId) {
+    try {
+        const [status, approvable, releasable] = await publicClient.readContract({
+            address: contract,
+            abi: AIDER_ABI,
+            functionName: "getRequestState",
+            args: [requestId],
+        });
+        return { status, approvable, releasable };
     }
-    // Fallback: extract the error name from viem's ContractFunctionRevertedError
-    const match = msg.match(/Error: (\w+)\(/);
-    if (match)
-        return match[1];
-    return "UnknownError";
+    catch (err) {
+        const d = decodeError(err);
+        if (isContractRejection(d) || d.kind === "no_code")
+            return null;
+        throw err;
+    }
 }
-// ── formatting helpers ────────────────────────────────────────────────────────
-export const USDC_DECIMALS = 6n;
-export const USDC_SCALE = 10n ** USDC_DECIMALS;
-export function formatUsdc(raw) {
-    const whole = raw / USDC_SCALE;
-    const frac = raw % USDC_SCALE;
-    return `$${whole}.${frac.toString().padStart(6, "0").slice(0, 2)}`;
-}
-export function parseUsdc(str) {
-    // Accept "1.50", "1", ".50"
-    const clean = str.replace(/^\$/, "");
-    const [whole = "0", frac = "0"] = clean.split(".");
-    const fracPadded = frac.slice(0, 6).padEnd(6, "0");
-    return BigInt(whole) * USDC_SCALE + BigInt(fracPadded);
-}
-export const REQUEST_STATUS = {
-    0: "pending",
-    1: "approved",
-    2: "rejected",
-    3: "expired",
-};
-export function txUrl(explorerUrl, txHash) {
-    return `${explorerUrl.replace(/\/$/, "")}/tx/${txHash}`;
-}
-export function addrUrl(explorerUrl, address) {
-    return `${explorerUrl.replace(/\/$/, "")}/address/${address}`;
+/** Detects the v2 contract by calling MAX_REQUEST_TTL() (missing on v1). */
+export async function detectVersion(publicClient, contract) {
+    try {
+        await publicClient.readContract({ address: contract, abi: AIDER_ABI, functionName: "MAX_REQUEST_TTL" });
+        return "v2";
+    }
+    catch (err) {
+        const d = decodeError(err);
+        if (isContractRejection(d) || d.kind === "no_code")
+            return "v1";
+        throw err;
+    }
 }
 //# sourceMappingURL=chain.js.map

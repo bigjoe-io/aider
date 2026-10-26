@@ -1,7 +1,11 @@
-export declare function cmdInit(opts: {
+export interface InitOptions {
     wallet: string;
-    key: string;
-    contract?: string;
+    key?: string;
+    network?: string;
     mainnet?: boolean;
-}): Promise<void>;
+    contract?: string;
+    rpc?: string;
+    deployBlock?: string;
+}
+export declare function cmdInit(opts: InitOptions): Promise<void>;
 //# sourceMappingURL=init.d.ts.map

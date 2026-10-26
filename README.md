@@ -1,96 +1,97 @@
-# Leash
+# Aider
 
-A USDC smart-contract wallet for AI agents on Arc. A human owner holds the funds; AI agents get scoped spending keys with per-payment and daily limits. Small payments execute immediately; larger ones create a reservation and wait for owner approval. Agents can be revoked instantly.
+**Your agent spends. You stay in control.**
 
-Built with [Arc Studio](https://studio.arc.io)
+Aider is a USDC wallet for AI agents on [Arc](https://arc.io). A human owner keeps the funds in a wallet inside the Aider contract; each AI agent gets its own key with a per-payment limit, a daily limit and an expiry. Payments within the limits go through at once, bigger ones become approval requests with the money reserved, and the owner can revoke an agent or pause the wallet instantly.
 
-## Tech stack
+Built with [Arc Studio](https://studio.arc.io).
 
-- Smart contract: Solidity 0.8.28, Foundry, OpenZeppelin 5.6.1
-- Chain: Arc Testnet (Chain ID 5042002) — deploys to Arc mainnet too
-- USDC: ERC-20 at `0x3600000000000000000000000000000000000000` (same address on mainnet and testnet)
+> Experimental and unaudited. Use small amounts.
 
-## Development
+## What's in this repo
 
-### Prerequisites
+| Path | What it is |
+|---|---|
+| `contracts/Aider.sol` | The contract (Solidity 0.8.28, Foundry). Tests in `contracts/test/`. |
+| `src/app` | The Next.js app: landing page (`/`), owner app (`/app`), docs (`/docs`), agent files (`/llms.txt`, `/llms-full.txt`, `/skill.md`). |
+| `src/docs/content` | The docs pages, as Markdown. |
+| `src/proxy.ts` | Serves the docs at the root of any `docs.*` host. |
+| `cli/` | `aidr`, the command-line tool agents use, and `cli/SKILL.md`, the instructions for AI agents. |
 
-- [Foundry](https://book.getfoundry.sh/getting-started/installation)
-- [Bun](https://bun.sh/)
+## Run it locally
 
-### Install
+Requires [Bun](https://bun.sh) and Node 18+.
 
 ```bash
 bun install
-```
-
-### Environment variables
-
-None required for contract development.
-
-| Variable | Purpose |
-|---|---|
-| `RPC_PROXY_BASE_URL` | Arc Studio RPC proxy base URL (optional outside Arc Studio) |
-| `RPC_PROXY_TOKEN` | Arc Studio RPC proxy auth token (optional outside Arc Studio) |
-| `RPC_PROXY_CHAINS` | Comma-separated chain keys the proxy covers (optional outside Arc Studio) |
-
-### Build and test contracts
-
-```bash
-bun run contracts:build   # forge build
-bun run contracts:test    # forge test
-```
-
-### Run the dev server
-
-```bash
 bun run dev
 ```
 
-## CLI: leash
+| URL | Page |
+|---|---|
+| http://localhost:5173 | Landing page |
+| http://localhost:5173/app | Owner app |
+| http://localhost:5173/docs | Docs |
+| http://docs.localhost:5173 | The same docs on their own host (how `docs.<your-domain>` works in production) |
 
-The `cli/` folder is an npm package (`leash-cli`) for AI agents to pay from a Leash wallet.
+The app talks to the Aider contract on **Arc Testnet** by default. To try it you need a browser wallet (MetaMask etc.) and some testnet USDC from [faucet.circle.com](https://faucet.circle.com).
+
+### Configuration
+
+Copy `.env.example` to `.env.local`. All variables are optional:
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `NEXT_PUBLIC_AIDER_NETWORK` | `testnet` | `testnet` (Arc Testnet) or `mainnet` (Arc). |
+| `NEXT_PUBLIC_AIDER_CONTRACT` | testnet deployment | The Aider contract address. Required for mainnet. |
+| `NEXT_PUBLIC_AIDER_DEPLOY_BLOCK` | `69187895` on the default testnet contract | Where the activity indexer starts reading events. |
+| `NEXT_PUBLIC_AIDER_RPC_URL` | Arc's public RPC | A dedicated RPC. Recommended in production: the public RPC rate-limits. |
+| `NEXT_PUBLIC_AIDER_GITHUB_URL`, `NEXT_PUBLIC_AIDER_X_URL` | | Links in the nav and footer. |
+
+### Scripts
 
 ```bash
-cd cli
-bun install
-bun run build          # compiles to cli/dist/
-node dist/index.js --help
+bun run dev              # next dev on :5173
+bun run build            # production build (prerenders every docs page)
+bun run typecheck        # TypeScript 7
+bun run contracts:build  # forge build
+bun run contracts:test   # forge test (91 tests)
+bun run abi:gen          # regenerate src/aider/abi.ts from contracts/out
 ```
 
-**Usage:**
+## The contract
+
+`contracts/Aider.sol` is version 2 of the contract first deployed as `Leash`. Every v1 function, event and error keeps its exact signature; v2 adds safety checks:
+
+- payments to the Aider contract or the USDC token are refused (`InvalidRecipient`), so funds can't get stranded;
+- re-adding an agent keeps what it already spent today, so its daily limit can't be reset;
+- revoking an agent voids its open approval requests (they can't be approved, and anyone can release the reserved money);
+- request TTL is capped at 7 days, and each agent can have at most 10 open requests per wallet;
+- the owner can't be added as an agent; agent expiry must be in the future;
+- unknown request ids revert with `RequestNotFound`;
+- `getAgent` returns today's real spending after UTC midnight;
+- new: `rejectRequests`, `expireRequests`, `getRequestState`, `openRequestCount`.
+
+See the [contract reference](src/docs/content/contract-reference.md) for every function and the v1/v2 differences.
+
+| Network | Address |
+|---|---|
+| Arc Testnet | `0xed32e15d81e7864bf19caea4333bd0781f328ba3` (v1 build, deploy block 69187895) |
+| Arc mainnet | not deployed yet |
+
+## The `aidr` CLI
 
 ```bash
-# One-time setup (agent side)
-leash init --wallet 1 --key 0x<AGENT_PRIVATE_KEY>
-
-# Check balance before paying
-leash balance
-
-# Pay (auto-falls back to approval request if over a limit)
-leash pay 0xRecipient 0.05 "API credits"
-
-# Track an approval request
-leash status 42
-leash wait 42
-
-# View payment history
-leash history
+cd cli && bun install && bun run build && npm link
+export AIDR_AGENT_KEY=0x…        # the agent's own key, never the owner's
+aidr init --wallet 1
+aidr balance
+aidr pay 0xRecipient 0.05 "API credits"
+aidr wait 42
 ```
 
-Key stores at `~/.leash/key` with mode 600. Config at `~/.leash/config.json`. Neither file is printed or logged.
+Every command prints one JSON object. See the [CLI reference](src/docs/content/cli-reference.md) and [cli/SKILL.md](cli/SKILL.md).
 
-See `cli/SKILL.md` for instructions written for AI coding agents.
+## License
 
-## Contract: Leash
-
-`contracts/Leash.sol` — single non-upgradeable contract.
-
-**Key features:**
-
-- Owners create wallets, deposit USDC, and withdraw unreserved funds at any time.
-- Agents (AI keys) are scoped per wallet with a label, per-payment cap, daily cap, and optional expiry.
-- Recipient policy: ANY recipient, or ALLOWLIST-only, with a separate blocklist.
-- `agentPay` — executes immediately when all limits pass.
-- `requestPayment` — reserves funds and waits for owner approval; useful when the amount exceeds agent limits.
-- `approveRequest` / `rejectRequest` / `expireRequest` — owner or time-based resolution.
-- Full view helpers including `getWallet`, `getAgent`, `getRequest`, `getPendingRequests`, `isAllowlisted`, `isBlocklisted`, `isRecipientPermitted`.
+MIT

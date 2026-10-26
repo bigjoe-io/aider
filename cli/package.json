@@ -1,15 +1,17 @@
 {
-  "name": "leash-cli",
-  "version": "0.1.0",
-  "description": "CLI for AI agents to pay from a Leash USDC wallet",
+  "name": "aidr-cli",
+  "version": "0.2.0",
+  "description": "aidr: the CLI that lets an AI agent pay USDC from an Aider wallet on Arc, inside the owner's limits",
   "type": "module",
   "bin": {
-    "leash": "./dist/index.js"
+    "aidr": "./dist/index.js"
   },
   "scripts": {
     "build": "tsc",
     "dev": "tsx src/index.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "bun test",
+    "abi:gen": "bun scripts/gen-abi.ts"
   },
   "dependencies": {
     "commander": "^12.1.0",

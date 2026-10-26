@@ -1,96 +1,135 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync, chmodSync } from "fs";
-import { homedir } from "os";
-import { join } from "path";
+import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
+import { getAddress, isAddress, isHex, type Address, type Hex } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
+import { CliError } from "./errors.js";
+import { note, registerSecret } from "./output.js";
 
-export interface LeashConfig {
-  walletId: bigint | string; // stored as string, loaded as bigint
-  agentAddress: string;
-  contractAddress: string;
-  rpcUrl: string;
+/** Saved by `aidr init` in ~/.aidr/config.json. The key lives separately in ~/.aidr/key. */
+export interface AidrConfig {
+  version: 1;
+  network: string; // "testnet" | "mainnet" | "custom"
+  networkName: string;
   chainId: number;
+  rpcUrl: string;
   explorerUrl: string;
-}
-
-// Stored form (all strings for JSON serialisation)
-interface StoredConfig {
+  contract: Address;
+  deployBlock: number;
   walletId: string;
-  agentAddress: string;
-  contractAddress: string;
-  rpcUrl: string;
-  chainId: number;
-  explorerUrl: string;
-  // key is written separately and never returned
+  agentAddress: Address;
 }
 
-const CONFIG_DIR = join(homedir(), ".leash");
-const CONFIG_FILE = join(CONFIG_DIR, "config.json");
-const KEY_FILE = join(CONFIG_DIR, "key");
+export function configDir(): string {
+  return join(homedir(), ".aidr");
+}
 
-// ── write ─────────────────────────────────────────────────────────────────────
+export function configPath(): string {
+  return join(configDir(), "config.json");
+}
 
-export function saveConfig(
-  walletId: bigint,
-  agentAddress: string,
-  privateKey: string,
-  contractAddress: string,
-  rpcUrl: string,
-  chainId: number,
-  explorerUrl: string,
-): void {
-  if (!existsSync(CONFIG_DIR)) {
-    mkdirSync(CONFIG_DIR, { recursive: true, mode: 0o700 });
+export function keyPath(): string {
+  return join(configDir(), "key");
+}
+
+const SETUP_HINT =
+  "Run on the agent's machine: export AIDR_AGENT_KEY=0x<the agent's private key> && aidr init --wallet <walletId>";
+
+/** Normalises a private key ("0x" optional, 64 hex chars) or returns null. Never echoes it. */
+export function normalizeKey(raw: string): Hex | null {
+  const k = raw.trim();
+  const hex: Hex = k.startsWith("0x") || k.startsWith("0X") ? `0x${k.slice(2)}` : `0x${k}`;
+  if (hex.length !== 66 || !isHex(hex, { strict: true })) return null;
+  try {
+    privateKeyToAccount(hex);
+    return hex.toLowerCase() as Hex;
+  } catch {
+    return null;
   }
-
-  const stored: StoredConfig = {
-    walletId: walletId.toString(),
-    agentAddress: agentAddress.toLowerCase(),
-    contractAddress,
-    rpcUrl,
-    chainId,
-    explorerUrl,
-  };
-
-  writeFileSync(CONFIG_FILE, JSON.stringify(stored, null, 2), { mode: 0o600 });
-
-  // Private key in a separate file — never mixed into config output
-  const normalized = privateKey.startsWith("0x") ? privateKey : `0x${privateKey}`;
-  writeFileSync(KEY_FILE, normalized, { mode: 0o600 });
-
-  // Ensure permissions even if file already existed
-  chmodSync(CONFIG_FILE, 0o600);
-  chmodSync(KEY_FILE, 0o600);
 }
 
-// ── read ──────────────────────────────────────────────────────────────────────
+function writePrivate(path: string, content: string): void {
+  // Write a fresh 0600 file and rename it over the old one, so the file never exists with wider permissions.
+  const tmp = `${path}.tmp-${process.pid}`;
+  writeFileSync(tmp, content, { mode: 0o600 });
+  chmodSync(tmp, 0o600);
+  renameSync(tmp, path);
+  chmodSync(path, 0o600);
+}
 
-export function loadConfig(): LeashConfig {
-  if (!existsSync(CONFIG_FILE)) {
-    die(
-      "No config found. Run:\n  leash init --wallet <walletId> --key <agentPrivateKey> [--contract <addr>]",
+export function saveConfig(cfg: AidrConfig, key: Hex): void {
+  const dir = configDir();
+  mkdirSync(dir, { recursive: true, mode: 0o700 });
+  chmodSync(dir, 0o700);
+  writePrivate(keyPath(), `${key}\n`);
+  writePrivate(configPath(), `${JSON.stringify(cfg, null, 2)}\n`);
+}
+
+export function loadConfig(): AidrConfig {
+  const path = configPath();
+  if (!existsSync(path)) {
+    throw new CliError("NotConfigured", "aidr isn't set up on this machine yet (no ~/.aidr/config.json).", SETUP_HINT);
+  }
+  let raw: unknown;
+  try {
+    raw = JSON.parse(readFileSync(path, "utf8"));
+  } catch {
+    throw new CliError("ConfigInvalid", `${path} is not valid JSON.`, SETUP_HINT);
+  }
+  const c = raw as Partial<AidrConfig>;
+  const ok =
+    typeof c.chainId === "number" &&
+    typeof c.rpcUrl === "string" &&
+    typeof c.explorerUrl === "string" &&
+    typeof c.contract === "string" &&
+    isAddress(c.contract, { strict: false }) &&
+    typeof c.walletId === "string" &&
+    /^\d+$/.test(c.walletId) &&
+    typeof c.agentAddress === "string" &&
+    isAddress(c.agentAddress, { strict: false });
+  if (!ok) {
+    throw new CliError("ConfigInvalid", `${path} is missing fields or was written by an older version.`, SETUP_HINT);
+  }
+  return {
+    version: 1,
+    network: typeof c.network === "string" ? c.network : "custom",
+    networkName: typeof c.networkName === "string" ? c.networkName : `Chain ${c.chainId}`,
+    chainId: c.chainId!,
+    rpcUrl: c.rpcUrl!,
+    explorerUrl: c.explorerUrl!,
+    contract: getAddress(c.contract!),
+    deployBlock: typeof c.deployBlock === "number" && c.deployBlock >= 0 ? c.deployBlock : 0,
+    walletId: c.walletId!,
+    agentAddress: getAddress(c.agentAddress!),
+  };
+}
+
+/** Reads the agent key saved by `aidr init` and checks it matches the configured agent address. */
+export function loadKey(cfg: AidrConfig): Hex {
+  const path = keyPath();
+  if (!existsSync(path)) {
+    throw new CliError("KeyMissing", "The agent key file ~/.aidr/key is missing.", SETUP_HINT);
+  }
+  if (process.platform !== "win32") {
+    const mode = statSync(path).mode & 0o777;
+    if ((mode & 0o077) !== 0) {
+      note(`Warning: ${path} is readable by other users (mode ${mode.toString(8)}). Run: chmod 600 ${path}`);
+    }
+  }
+  const raw = readFileSync(path, "utf8");
+  registerSecret(raw);
+  const key = normalizeKey(raw);
+  if (!key) {
+    throw new CliError("KeyInvalid", "~/.aidr/key doesn't contain a valid private key.", SETUP_HINT);
+  }
+  registerSecret(key);
+  const address = privateKeyToAccount(key).address;
+  if (address.toLowerCase() !== cfg.agentAddress.toLowerCase()) {
+    throw new CliError(
+      "KeyMismatch",
+      `~/.aidr/key belongs to ${address}, but the config is for agent ${cfg.agentAddress}.`,
+      SETUP_HINT,
     );
   }
-  const raw = JSON.parse(readFileSync(CONFIG_FILE, "utf8")) as StoredConfig;
-  return {
-    walletId: BigInt(raw.walletId),
-    agentAddress: raw.agentAddress,
-    contractAddress: raw.contractAddress,
-    rpcUrl: raw.rpcUrl,
-    chainId: raw.chainId,
-    explorerUrl: raw.explorerUrl,
-  };
-}
-
-export function loadPrivateKey(): `0x${string}` {
-  if (!existsSync(KEY_FILE)) {
-    die("Key file missing. Re-run `leash init` to reconfigure.");
-  }
-  const key = readFileSync(KEY_FILE, "utf8").trim() as `0x${string}`;
   return key;
-}
-
-// ── helpers ───────────────────────────────────────────────────────────────────
-
-export function die(msg: string): never {
-  console.error(`\nError: ${msg}\n`);
-  process.exit(1);
 }
