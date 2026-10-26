@@ -2,7 +2,7 @@
 pragma solidity 0.8.28;
 
 import {Test} from "forge-std/Test.sol";
-import {Leash} from "../Leash.sol";
+import {Aider} from "../Aider.sol";
 
 // ---------------------------------------------------------------------------
 // Minimal MockERC20 – deployed at a throwaway address then etched into 0x3600…
@@ -40,10 +40,10 @@ contract MockERC20 {
 // ---------------------------------------------------------------------------
 // Shared test base
 // ---------------------------------------------------------------------------
-abstract contract LeashTestBase is Test {
+abstract contract AiderTestBase is Test {
     address internal constant USDC_ADDR = 0x3600000000000000000000000000000000000000;
 
-    Leash   internal leash;
+    Aider   internal aider;
     MockERC20 internal usdc;
 
     address internal owner;   // = address(this) in each concrete test
@@ -66,16 +66,16 @@ abstract contract LeashTestBase is Test {
         vm.etch(USDC_ADDR, address(mockImpl).code);
         usdc = MockERC20(USDC_ADDR);
 
-        // Deploy Leash (USDC_TOKEN constant now has code behind it).
-        leash = new Leash();
+        // Deploy Aider (USDC_TOKEN constant now has code behind it).
+        aider = new Aider();
 
         // Seed owner with USDC and unlimited approval.
         usdc.mint(owner, 10_000e6);
-        usdc.approve(address(leash), type(uint256).max);
+        usdc.approve(address(aider), type(uint256).max);
 
         // Default wallet with 100 USDC deposited.
-        walletId = leash.createWallet();
-        leash.deposit(walletId, 100e6);
+        walletId = aider.createWallet();
+        aider.deposit(walletId, 100e6);
     }
 
     // -----------------------------------------------------------------------
@@ -84,13 +84,13 @@ abstract contract LeashTestBase is Test {
 
     /// Add agent1 with default limits (active, never-expires).
     function _addDefaultAgent() internal {
-        leash.addAgent(walletId, agent1, "agent1", PER_PAY, DAILY, EXPIRES0);
+        aider.addAgent(walletId, agent1, "agent1", PER_PAY, DAILY, EXPIRES0);
     }
 
     /// Have agent1 pay `amount` to `recipient` with memo "m".
     function _agentPay(uint256 amount) internal {
         vm.prank(agent1);
-        leash.agentPay(walletId, recipient, amount, "m");
+        aider.agentPay(walletId, recipient, amount, "m");
     }
 
     /// Read (balance, reserved, available) for walletId.
@@ -99,12 +99,12 @@ abstract contract LeashTestBase is Test {
         view
         returns (uint256 balance, uint256 reserved, uint256 available)
     {
-        (, balance, reserved, available, ,) = leash.getWallet(walletId);
+        (, balance, reserved, available, ,) = aider.getWallet(walletId);
     }
 
     /// Read agent1 (spentToday) from getAgent.
     function _spentToday() internal view returns (uint256) {
-        (,,,, , uint256 spent,) = leash.getAgent(walletId, agent1);
+        (,,,, , uint256 spent,) = aider.getAgent(walletId, agent1);
         return spent;
     }
 }
