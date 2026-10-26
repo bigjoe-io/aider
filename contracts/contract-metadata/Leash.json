@@ -1,0 +1,1067 @@
+{
+  "contractAddress": "0xed32e15d81e7864bf19caea4333bd0781f328ba3",
+  "network": "ARC-TESTNET",
+  "deployerWalletId": "3c2464b2-8369-52e2-a782-800bbeca5396",
+  "contract_code_path": "/home/user/app/contracts/Leash.sol",
+  "contract_compiled_code_path": "/home/user/app/contracts/out/Leash.sol/Leash.json",
+  "contract_network_and_links": {
+    "Arc Testnet": "https://explorer.testnet.arc.io/address/0xed32e15d81e7864bf19caea4333bd0781f328ba3"
+  },
+  "contract_deployments": [
+    {
+      "chain": "Arc Testnet",
+      "address": "0xed32e15d81e7864bf19caea4333bd0781f328ba3",
+      "explorerUrl": "https://explorer.testnet.arc.io/address/0xed32e15d81e7864bf19caea4333bd0781f328ba3",
+      "txHash": "0xeec9e7f4b91a055657ec5e70a2fceca011c3afa10d4a9a746faea1370c529e7a",
+      "deployedAt": "2026-10-26T12:04:41.765Z"
+    }
+  ],
+  "abi": [
+    {
+      "type": "function",
+      "name": "USDC_TOKEN",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "addAgent",
+      "inputs": [
+        {
+          "name": "walletId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "agentAddress",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "label",
+          "type": "string",
+          "internalType": "string"
+        },
+        {
+          "name": "perPaymentLimit",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "dailyLimit",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "expiresAt",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "agentPay",
+      "inputs": [
+        {
+          "name": "walletId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "to",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "amount",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "memo",
+          "type": "string",
+          "internalType": "string"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "approveRequest",
+      "inputs": [
+        {
+          "name": "requestId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "createWallet",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "walletId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "deposit",
+      "inputs": [
+        {
+          "name": "walletId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "amount",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "expireRequest",
+      "inputs": [
+        {
+          "name": "requestId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "getAgent",
+      "inputs": [
+        {
+          "name": "walletId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "agentAddress",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "label",
+          "type": "string",
+          "internalType": "string"
+        },
+        {
+          "name": "perPaymentLimit",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "dailyLimit",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "expiresAt",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "active",
+          "type": "bool",
+          "internalType": "bool"
+        },
+        {
+          "name": "spentToday",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "dayStart",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getPendingRequests",
+      "inputs": [
+        {
+          "name": "walletId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "pendingIds",
+          "type": "uint256[]",
+          "internalType": "uint256[]"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getRequest",
+      "inputs": [
+        {
+          "name": "requestId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "tuple",
+          "internalType": "struct Leash.PaymentRequest",
+          "components": [
+            {
+              "name": "walletId",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "agent",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "to",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "amount",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "memo",
+              "type": "string",
+              "internalType": "string"
+            },
+            {
+              "name": "expiresAt",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "status",
+              "type": "uint8",
+              "internalType": "enum Leash.RequestStatus"
+            }
+          ]
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getWallet",
+      "inputs": [
+        {
+          "name": "walletId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "owner",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "balance",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "reserved",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "available",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "paused",
+          "type": "bool",
+          "internalType": "bool"
+        },
+        {
+          "name": "mode",
+          "type": "uint8",
+          "internalType": "enum Leash.RecipientMode"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "isAllowlisted",
+      "inputs": [
+        {
+          "name": "walletId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "recipient",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "isBlocklisted",
+      "inputs": [
+        {
+          "name": "walletId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "recipient",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "isRecipientPermitted",
+      "inputs": [
+        {
+          "name": "walletId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "recipient",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "nextRequestId",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "nextWalletId",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "pauseWallet",
+      "inputs": [
+        {
+          "name": "walletId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "paused",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "rejectRequest",
+      "inputs": [
+        {
+          "name": "requestId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "requestPayment",
+      "inputs": [
+        {
+          "name": "walletId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "to",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "amount",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "memo",
+          "type": "string",
+          "internalType": "string"
+        },
+        {
+          "name": "ttlSeconds",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "requestId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "revokeAgent",
+      "inputs": [
+        {
+          "name": "walletId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "agentAddress",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "setAllowlist",
+      "inputs": [
+        {
+          "name": "walletId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "recipient",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "allowed",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "setBlocklist",
+      "inputs": [
+        {
+          "name": "walletId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "recipient",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "blocked",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "setRecipientMode",
+      "inputs": [
+        {
+          "name": "walletId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "mode",
+          "type": "uint8",
+          "internalType": "enum Leash.RecipientMode"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "updateAgent",
+      "inputs": [
+        {
+          "name": "walletId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "agentAddress",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "perPaymentLimit",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "dailyLimit",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "expiresAt",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "withdraw",
+      "inputs": [
+        {
+          "name": "walletId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "amount",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "AgentAdded",
+      "inputs": [
+        {
+          "name": "walletId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "agent",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "label",
+          "type": "string",
+          "indexed": false,
+          "internalType": "string"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "AgentPaid",
+      "inputs": [
+        {
+          "name": "walletId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "agent",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "to",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "amount",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "memo",
+          "type": "string",
+          "indexed": false,
+          "internalType": "string"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "AgentRevoked",
+      "inputs": [
+        {
+          "name": "walletId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "agent",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "AgentUpdated",
+      "inputs": [
+        {
+          "name": "walletId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "agent",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "AllowlistUpdated",
+      "inputs": [
+        {
+          "name": "walletId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "recipient",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        },
+        {
+          "name": "allowed",
+          "type": "bool",
+          "indexed": false,
+          "internalType": "bool"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "BlocklistUpdated",
+      "inputs": [
+        {
+          "name": "walletId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "recipient",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        },
+        {
+          "name": "blocked",
+          "type": "bool",
+          "indexed": false,
+          "internalType": "bool"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "Deposited",
+      "inputs": [
+        {
+          "name": "walletId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "amount",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "PaymentRequested",
+      "inputs": [
+        {
+          "name": "requestId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "walletId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "agent",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "to",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        },
+        {
+          "name": "amount",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "memo",
+          "type": "string",
+          "indexed": false,
+          "internalType": "string"
+        },
+        {
+          "name": "expiresAt",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "RecipientModeSet",
+      "inputs": [
+        {
+          "name": "walletId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "mode",
+          "type": "uint8",
+          "indexed": false,
+          "internalType": "enum Leash.RecipientMode"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "RequestApproved",
+      "inputs": [
+        {
+          "name": "requestId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "walletId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "RequestExpired",
+      "inputs": [
+        {
+          "name": "requestId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "walletId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "RequestRejected",
+      "inputs": [
+        {
+          "name": "requestId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "walletId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "WalletCreated",
+      "inputs": [
+        {
+          "name": "walletId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "owner",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "WalletPausedEvent",
+      "inputs": [
+        {
+          "name": "walletId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "paused",
+          "type": "bool",
+          "indexed": false,
+          "internalType": "bool"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "Withdrawn",
+      "inputs": [
+        {
+          "name": "walletId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "amount",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "AgentExpired",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "AgentNotActive",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "AgentRevokedError",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "InsufficientBalance",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "InvalidTTL",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "NotWalletOwner",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "OverDailyLimit",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "OverPerPaymentLimit",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "RecipientBlocked",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "RecipientNotAllowed",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "ReentrancyGuardReentrantCall",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "RequestExpiredError",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "RequestNotExpiredYet",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "RequestNotPending",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "WalletPaused",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "ZeroAddress",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "ZeroAmount",
+      "inputs": []
+    }
+  ]
+}
