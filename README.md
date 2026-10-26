@@ -46,6 +46,41 @@ bun run contracts:test    # forge test
 bun run dev
 ```
 
+## CLI: leash
+
+The `cli/` folder is an npm package (`leash-cli`) for AI agents to pay from a Leash wallet.
+
+```bash
+cd cli
+bun install
+bun run build          # compiles to cli/dist/
+node dist/index.js --help
+```
+
+**Usage:**
+
+```bash
+# One-time setup (agent side)
+leash init --wallet 1 --key 0x<AGENT_PRIVATE_KEY>
+
+# Check balance before paying
+leash balance
+
+# Pay (auto-falls back to approval request if over a limit)
+leash pay 0xRecipient 0.05 "API credits"
+
+# Track an approval request
+leash status 42
+leash wait 42
+
+# View payment history
+leash history
+```
+
+Key stores at `~/.leash/key` with mode 600. Config at `~/.leash/config.json`. Neither file is printed or logged.
+
+See `cli/SKILL.md` for instructions written for AI coding agents.
+
 ## Contract: Leash
 
 `contracts/Leash.sol` — single non-upgradeable contract.
