@@ -82,7 +82,7 @@ See the [contract reference](src/docs/content/contract-reference.md) for every f
 ## The `aidr` CLI
 
 ```bash
-cd cli && bun install && bun run build && npm link
+npm install -g aidr-cli         # or from this repo: cd cli && bun install && bun run build && npm link
 aidr setup --name "Claude Code"  # makes the agent's key, prints a link for the owner
 # the owner opens the link and clicks Add agent
 aidr balance

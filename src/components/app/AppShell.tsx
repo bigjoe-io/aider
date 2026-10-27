@@ -265,8 +265,8 @@ function Disconnected() {
   return (
     <GateCard title="Connect a wallet to manage your agents" text="Your browser wallet is the owner of your Aider wallet. Agents get their own keys later.">
       <ConnectButton size="lg" />
-      <Button href="/docs/quickstart-owners" variant="link" className="text-fg">
-        New here? Read the owner quickstart
+      <Button href="/docs/quickstart" variant="link" className="text-fg">
+        New here? Read the quickstart
       </Button>
     </GateCard>
   )

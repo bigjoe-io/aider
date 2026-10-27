@@ -1,43 +1,42 @@
 ---
 title: Introduction
-summary: Aider is a USDC wallet for AI agents on Arc. You keep the money; each agent gets a key with limits.
+summary: Aider is a USDC wallet for AI agents on Arc. You keep the money; each agent gets an allowance.
 group: Get started
 order: 1
-tags: quickstart-owners, quickstart-agents, how-it-works
+tags: quickstart, quickstart-owners, quickstart-agents
 ---
 
-## The problem
+## What Aider does
 
-AI agents increasingly need to pay for things: API credits, datasets, compute, or another agent's work. The usual way to let an agent pay is to put a funded private key in its environment. That works until the agent loops, a prompt goes wrong or the key leaks. Then the whole balance can leave in one transaction.
+Aider lets an AI agent, such as Claude Code, pay for things with USDC **without holding your money**.
 
-Aider gives the agent an allowance instead of the vault.
+- **You keep the money.** Your USDC sits in your Aider wallet on Arc. Only you can withdraw it.
+- **Each agent gets an allowance.** You choose how much it can pay at once and per day. Payments inside that go through by themselves.
+- **Bigger payments wait for you.** The agent asks, and you approve or reject it in the app.
+- **You can stop an agent at any time.** One click revokes it.
 
-## How it works
+## How you set it up
 
-- **You own the wallet.** Your USDC sits in your wallet inside the Aider contract on Arc. Only your address can withdraw it.
-- **Each agent gets its own key with limits.** You set a per-payment limit, a daily limit and an expiry for every agent. Payments inside those limits go through at once.
-- **Bigger payments wait for you.** An agent that needs more than its limit creates an approval request. The money is reserved, and you approve or reject it in the app.
-- **You can cut an agent off instantly.** Revoke one agent, or pause every agent on the wallet with one switch.
+1. **In the app:** connect your wallet, create an Aider wallet and add some USDC.
+2. **On the agent's computer:** install `aidr` and run `aidr setup`. It prints a link.
+3. **Open the link:** choose the agent's limits and click **Add agent**.
 
-The contract checks every rule on every payment. The app and the CLI only make it easy to use.
+That's all. The agent can now pay. Follow the [quickstart](/docs/quickstart) for the exact steps.
 
-## What's in the box
+## The parts
 
-| Part | What it does |
-|---|---|
-| The Aider contract | Holds the funds and enforces every rule onchain. |
-| The owner app | Create a wallet, deposit, add and revoke agents, approve requests, watch activity. |
-| The `aidr` CLI | What an agent runs to check its budget, pay and wait for approvals. Every command prints JSON. |
-| `SKILL.md` | Instructions an AI coding agent can follow to use `aidr` safely. |
-| These docs | Also available to agents as [/llms.txt](/llms.txt) and [/llms-full.txt](/llms-full.txt). |
+| Part | Where | What it's for |
+|---|---|---|
+| The app | [aider-smoky.vercel.app/app](https://aider-smoky.vercel.app/app) | You: add money, add agents, approve, revoke. |
+| `aidr` | The agent's computer (`npm install -g aidr-cli`) | The agent: check its budget, pay, wait for approval. |
+| `SKILL.md` | [/skill.md](/skill.md) | Instructions that teach an AI agent to use `aidr` safely. |
+| The Aider contract | Arc | Holds the money and checks every rule. |
 
 ## Status
 
 > [!WARNING]
-> Aider is experimental and has not been audited. Use small amounts.
-
-The contract currently deployed on Arc Testnet is the first version of the contract (it was called `Leash`). The repository contains version 2, which adds several safety checks; see the [contract reference](/docs/contract-reference#v1-and-v2) for the differences. Nothing is deployed on Arc mainnet yet.
+> Aider is experimental and unaudited, and runs on **Arc Testnet**: the USDC is free test money. Use small amounts.
 
 ## Next
 
-If you own the money, start with the [quickstart for owners](/docs/quickstart-owners). If you are setting up an agent, go to the [quickstart for agents](/docs/quickstart-agents).
+Start with the [quickstart](/docs/quickstart).

@@ -1,60 +1,69 @@
 ---
-title: Quickstart for owners
-summary: Create a wallet, fund it and give your first agent a key with limits.
+title: Owner guide
+summary: Everything you do in the app, as short steps.
 group: Get started
-order: 2
-meta: Time=About 5 minutes | You need=A browser wallet and a little testnet USDC | Network=Arc Testnet
-tags: quickstart-agents, spending-rules, approval-requests
+order: 3
+meta: Where=The Aider app | You need=A browser wallet with test USDC | Network=Arc Testnet
+tags: quickstart, spending-rules, approval-requests
 ---
 
-## Before you start
+Open [the app](https://aider-smoky.vercel.app/app) and connect your wallet. Everything below happens there.
 
-You need a browser wallet such as MetaMask and some testnet USDC. Get testnet USDC from Circle's faucet at [faucet.circle.com](https://faucet.circle.com). On Arc, gas is also paid in USDC, so the same balance covers fees.
+## Add money
 
-You don't need to create a key for the agent. The agent makes its own and sends you a link.
+1. Go to **Overview** and click **Deposit**.
+2. Enter an amount and confirm **Approve**, then **Deposit**. If you approved enough before, there's only one prompt.
 
-## 1. Connect
+## Add an agent
 
-Open the app at `/app` and click **Connect wallet**. If your wallet is on another network, the app asks you to switch to Arc Testnet.
+1. On the agent's computer, run `aidr setup --name "Claude Code"` (see the [agent guide](/docs/quickstart-agents)).
+2. Open the link it prints. **Add agent** opens with the agent's address and name filled in.
+3. Choose its limits:
 
-## 2. Create a wallet
-
-Click **Create wallet** and confirm in your wallet. You get a wallet id (1, 2, 3…).
-
-## 3. Deposit USDC
-
-Open **Overview** and click **Deposit**. Enter an amount, for example `5`. Your wallet asks for two confirmations:
-
-1. **Approve** lets the Aider contract move that amount of USDC from your address.
-2. **Deposit** moves it into your Aider wallet.
-
-If you already approved enough earlier, the app skips the first step.
-
-## 4. Add an agent
-
-On the agent's machine, run (or ask your agent to run):
-
-```bash title="Terminal"
-aidr setup --name "Claude Code"
-```
-
-It prints a link. Open it in this browser: **Add agent** opens with the agent's address and name filled in. Choose:
-
-| Field | Example | Meaning |
+| Setting | Example | What it means |
 |---|---|---|
-| Per payment | `$0.10` | The largest single payment it can make on its own. |
-| Per day | `$0.50` | The most it can spend on its own per UTC day. |
-| Expires | 30 days | After this the key stops working. "Never" is allowed. |
-| Send 0.05 USDC for gas | on | Gas on Arc is paid in USDC, so the agent needs a little. |
+| Per payment | `$0.10` | The biggest payment it can make without asking you. |
+| Per day | `$0.50` | The most it can spend without asking you, per day (resets at 00:00 UTC). |
+| Key expires | 30 days | After this the agent stops working until you extend it. |
+| Send 0.05 USDC for gas | On | Sends the agent a little USDC for fees. |
 
-Click **Add agent**. That's it: the agent finds your wallet by itself. It can check with `aidr balance`.
+4. Click **Add agent** and confirm.
 
-New to `aidr`? The [quickstart for agents](/docs/quickstart-agents) covers installing it.
+You never handle the agent's key. It stays on the agent's computer.
 
-## 5. Watch and approve
+> [!NOTE]
+> No link? Click **Add agent** on the **Agents** page. It shows the `aidr setup` command to run, or you can paste an address.
 
-Payments within the limits appear in **Activity** with their memo and an explorer link. Anything bigger appears in **Approvals**, with the amount already reserved. Click **Approve** to pay it or **Reject** to release the money.
+## Approve or reject a payment
+
+When an agent asks for more than its limit, the money is set aside and the request appears in **Approvals**.
+
+- Click **Approve** to pay it.
+- Click **Reject** to say no. The money goes back to your available balance.
+
+If you do nothing, the request expires (after 30 minutes by default) and nothing is paid.
+
+## Change limits
+
+On **Agents**, click **Edit limits**. New limits apply to the next payment.
+
+## Stop an agent
+
+- **One agent:** on **Agents**, click **Revoke**. It can't pay from the next block, and its open requests are cancelled.
+- **All agents at once:** on **Overview**, click **Pause all agents**. Click **Resume agents** to undo it.
+
+## Send an agent more gas
+
+On **Agents**, click **Connect this agent**, then **Send 0.05 USDC for gas**.
+
+## See what happened
+
+**Activity** lists every deposit, payment, request and change, with the memo the agent wrote and an explorer link.
+
+## Take your money out
+
+On **Overview**, click **Withdraw**. Only you can do this.
 
 ## Next
 
-Read [spending rules](/docs/spending-rules) to choose good limits, and [revoking and pausing](/docs/revoking-and-pausing) for the emergency controls.
+Choose good limits with [spending rules](/docs/spending-rules), or see the [emergency controls](/docs/revoking-and-pausing) in detail.

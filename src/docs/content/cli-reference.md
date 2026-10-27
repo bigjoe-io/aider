@@ -26,7 +26,7 @@ aidr setup --name "Claude Code"
 |---|---|---|
 | `--name <label>` | `AI agent` | How the agent appears to the owner. |
 | `--wallet <id>` | found later | The wallet id, if you already know it. |
-| `--app <url>` | `AIDR_APP_URL` or `http://localhost:5173` | The Aider app the link opens. |
+| `--app <url>` | `AIDR_APP_URL` or `https://aider-smoky.vercel.app` | The Aider app the link opens. |
 | `--network`, `--mainnet`, `--contract`, `--rpc`, `--deploy-block` | as for `init` | Which network and contract. |
 
 Result: `status` is `waiting_for_owner` or `connected`, plus `agentAddress`, `connectLink`, `walletId` and `keyCreated`. Running it again keeps the same key. Until the owner adds the agent, other commands fail with `NotLinked` and repeat the link; after that, the first command finds the wallet and saves it.

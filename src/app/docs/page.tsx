@@ -1,13 +1,13 @@
-import { ArrowRight, BookOpen, Bot, Terminal, Workflow } from 'lucide-react'
+import { ArrowRight, BookOpen, Bot, MessageSquare, Rocket } from 'lucide-react'
 import { DOCS_GROUPS, getAllDocs } from '@/docs/registry'
 import { DocLink } from '@/components/docs/DocsChrome'
 import { Callout } from '@/components/ui'
 
 const CARDS = [
-  { slug: 'quickstart-owners', title: 'Quickstart for owners', text: 'Create a wallet, fund it and add your first agent in about five minutes.', icon: BookOpen },
-  { slug: 'quickstart-agents', title: 'Quickstart for agents', text: 'Install aidr on the agent’s machine and make a first payment.', icon: Bot },
-  { slug: 'how-it-works', title: 'How it works', text: 'Where the money lives and what happens to every payment.', icon: Workflow },
-  { slug: 'cli-reference', title: 'CLI reference', text: 'Every aidr command, flag and JSON output.', icon: Terminal },
+  { slug: 'quickstart', title: 'Quickstart', text: 'Your first agent payment in 5 steps, about 10 minutes.', icon: Rocket },
+  { slug: 'use-with-claude', title: 'Use it with Claude', text: 'What to say to Claude Code, and what agents can pay for.', icon: MessageSquare },
+  { slug: 'quickstart-owners', title: 'Owner guide', text: 'Add money, add agents, approve, revoke and withdraw in the app.', icon: BookOpen },
+  { slug: 'quickstart-agents', title: 'Agent guide', text: 'Install aidr, connect and pay from the terminal.', icon: Bot },
 ]
 
 export default function DocsHome() {

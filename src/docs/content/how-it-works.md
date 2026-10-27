@@ -2,7 +2,7 @@
 title: How it works
 summary: The pieces, where the money lives, and what happens to every payment.
 group: Get started
-order: 4
+order: 6
 tags: agent-payments, approval-requests, security-model
 ---
 

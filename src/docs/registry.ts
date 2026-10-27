@@ -59,7 +59,8 @@ export function expandIncludes(body: string): string {
 let cache: DocPage[] | undefined
 
 export function getAllDocs(): DocPage[] {
-  if (cache) return cache
+  // In development, re-read so new or edited pages show up without a restart.
+  if (cache && process.env.NODE_ENV === 'production') return cache
   const files = fs.readdirSync(CONTENT_DIR).filter((f) => f.endsWith('.md'))
   const pages = files.map((file): DocPage => {
     const slug = file.replace(/\.md$/, '')

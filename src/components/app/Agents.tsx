@@ -77,7 +77,7 @@ function setupCommand(extra = ''): string {
   const network = IS_TESTNET ? '' : ' --network mainnet'
   const contract = IS_DEFAULT_DEPLOYMENT ? '' : ` --contract ${AIDER_ADDRESS}`
   const origin = typeof window === 'undefined' ? '' : window.location.origin
-  const app = origin && origin !== 'http://localhost:5173' ? ` --app ${origin}` : ''
+  const app = origin && origin !== 'https://aider-smoky.vercel.app' ? ` --app ${origin}` : ''
   return `aidr setup${extra}${network}${contract}${app}`
 }
 
@@ -320,7 +320,7 @@ function AgentDialog({ open, onClose, agent, prefill }: { open: boolean; onClose
         {!editing && !prefill && (
           <div>
             <p className="mb-2 text-sm text-fg">Easiest: run this on the agent’s machine and open the link it prints</p>
-            <CodeBlock code={setupCommand(' --name "Claude Code"')} lang="bash" wrap />
+            <CodeBlock code={`npm install -g aidr-cli\n${setupCommand(' --name "Claude Code"')}`} lang="bash" wrap />
             <p className="mt-3 text-[13px] text-fg-3">Or paste an address whose key the agent already has:</p>
           </div>
         )}
@@ -397,7 +397,7 @@ aidr init --wallet ${walletId.toString()}${network}${contract}`
       <p className="mt-4 text-[13px] leading-relaxed text-fg-3">
         Not installed yet? See the{' '}
         <a href="/docs/quickstart-agents" className="text-fg underline underline-offset-2">
-          agent quickstart
+          agent guide
         </a>
         . Coding agents should read{' '}
         <a href="/docs/skill-md" className="text-fg underline underline-offset-2">

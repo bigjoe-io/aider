@@ -27,7 +27,7 @@ const COLUMNS: { title: string; links: FooterLink[] }[] = [
     title: 'Developers',
     links: [
       { label: 'Docs', href: '/docs' },
-      { label: 'Quickstart', href: '/docs/quickstart-owners' },
+      { label: 'Quickstart', href: '/docs/quickstart' },
       { label: 'CLI reference', href: '/docs/cli-reference' },
       { label: 'SKILL.md', href: '/docs/skill-md' },
       { label: 'Contract reference', href: '/docs/contract-reference' },

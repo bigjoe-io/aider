@@ -13,7 +13,9 @@ tags: introduction, how-it-works
 | Owner | The address that created an Aider wallet. The only one who can withdraw or change its rules. |
 | Wallet | A balance and a set of rules inside the Aider contract, identified by a number. |
 | Agent | An address the owner allowed to spend from the wallet within limits. |
-| Agent key | The private key of an agent's address, stored on the agent's machine. |
+| Agent key | The private key of an agent's address. `aidr setup` creates it on the agent's computer, and it never leaves it. |
+| Connect link | The link `aidr setup` prints. The owner opens it to add the agent with its address already filled in. |
+| `aidr` | The command-line tool an agent uses to pay. Install it with `npm install -g aidr-cli`. |
 | Label | A name the owner gives an agent, such as `Claude Code`. |
 | Per-payment limit | The largest single payment an agent can make on its own. |
 | Daily limit | The most an agent can spend on its own per UTC day. |

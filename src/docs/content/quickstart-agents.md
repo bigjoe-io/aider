@@ -1,99 +1,92 @@
 ---
-title: Quickstart for agents
-summary: Run one command on the agent's machine, have the owner open a link, and pay.
+title: Agent guide
+summary: Install aidr, connect the agent and pay, as short steps.
 group: Get started
-order: 3
-meta: Runs on=The agent's machine | Needs=Node 18+ and bun | Output=One JSON object per command
-tags: cli-reference, skill-md, errors
+order: 4
+meta: Runs on=The agent's computer | Needs=Node 18 or newer | Output=One JSON object per command
+tags: quickstart, cli-reference, use-with-claude
 ---
 
-## 1. Install the CLI
-
-The CLI lives in the `cli/` folder of the Aider repository.
+## Install
 
 ```bash title="Terminal"
-cd cli
-bun install
-bun run build
-npm link        # makes the `aidr` command available
-aidr --help
+npm install -g aidr-cli
+aidr --version
 ```
 
-## 2. Set up the agent
+To update later, run `npm install -g aidr-cli@latest`.
+
+## Connect to a wallet
 
 ```bash title="Terminal"
 aidr setup --name "Claude Code"
 ```
 
-`setup` makes the agent its own key, saves it in `~/.aidr/key` (only you can read it) and prints a link:
+1. `aidr` makes the agent its own key and keeps it on this computer (in `~/.aidr/key`). It never prints it.
+2. It prints a link. The wallet owner opens it, chooses the limits and clicks **Add agent**.
+3. Run `aidr balance`. The first time, it finds the wallet by itself.
 
-```text title="Output"
-Agent address: 0x7D47…bebf
+Until the owner adds the agent, commands answer `NotLinked` and show the link again.
 
-Open this link where your Aider wallet is, set the limits and click Add agent:
-
-  http://localhost:5173/connect?agent=0x7D47…bebf&name=Claude+Code&chain=5042002&contract=0x…
-```
-
-## 3. The owner opens the link
-
-The link opens **Add agent** in the Aider app with the address and name filled in. The owner picks the limits and clicks **Add agent**. By default the app also sends the agent 0.05 USDC for gas.
-
-Nobody copies a key: it never leaves the agent's machine.
-
-> [!TIP]
-> If the app isn't on `localhost:5173`, pass its address: `aidr setup --app https://your-aider-app.com`, or set `AIDR_APP_URL`. On Arc mainnet add `--network mainnet --contract 0x…`.
-
-## 4. Check the budget
+## Check the budget
 
 ```bash title="Terminal"
 aidr balance
 ```
 
-The first time, `aidr` finds the wallet the owner added it to and remembers it. Look at `agent.status` (it must be `active`) and `maxDirectPayment`, the largest payment that goes through right now without approval.
+| Field | What to look at |
+|---|---|
+| `agent.status` | Must be `active` to pay. |
+| `maxDirectPayment` | The biggest payment that goes through right now without approval. |
+| `agent.remainingToday` | What's left of today's limit. |
 
-## 5. Pay
-
-```bash title="Terminal"
-aidr pay 0x8f3…a21 0.05 "API credits for the weather lookup"
-```
-
-Within the limits you get `"status": "paid"` with a transaction hash and an explorer link. If the amount is over the per-payment or daily limit, `aidr` creates an approval request instead:
-
-```json title="aidr pay 0x8f3…a21 1.00 'Premium dataset'"
-{ "status": "pending_approval", "requestId": "42", "reason": "OverPerPaymentLimit",
-  "amount": "1.00", "expiresAt": "2026-10-26T18:01:38.000Z", "ttlMinutes": 30 }
-```
-
-The payment is **not** made yet. Tell the user, then wait for the owner:
+## Pay
 
 ```bash title="Terminal"
-aidr wait 42 --timeout 1.5
+aidr pay <address> <amount> "<what it's for>"
 ```
 
-`wait` prints the request once it's approved, rejected or expired. Set `--timeout` below your own command timeout and call it again if needed.
+```bash title="Example"
+aidr pay 0x90F79bf6EB2c4f870365E785982E1f101E93b906 0.05 "Weather API credits"
+```
 
-## 6. Give the rules to your coding agent
+| Result | Meaning |
+|---|---|
+| `"status": "paid"` | Done. Includes an explorer link. |
+| `"status": "pending_approval"` | Over a limit. Not paid yet: the owner has to approve it. Note the `requestId`. |
+| `"status": "error"` | Nothing was paid. `message` says why and `hint` says what to do. |
 
-If the agent is an AI coding tool such as Claude Code, give it [SKILL.md](/docs/skill-md). It tells the agent when to check its balance, how to read each result and what never to do.
-
-## Advanced: use a key you already have
-
-If the owner added an address by hand and you have its private key, use `init` instead of `setup`:
+## Wait for approval
 
 ```bash title="Terminal"
-export AIDR_AGENT_KEY=0x…      # the agent's own key, never the owner's
-aidr init --wallet 1
+aidr wait 42 --timeout 2
 ```
 
-## Remove the agent from this machine
+`42` is the `requestId`. It prints the result once the owner approves or rejects, or when the request expires. `aidr status 42` checks once without waiting.
+
+## See past payments
+
+```bash title="Terminal"
+aidr history
+```
+
+## Remove the agent from this computer
 
 ```bash title="Terminal"
 aidr reset --yes
 ```
 
-This deletes the key and config. To stop the agent paying, the owner revokes it in the app.
+This deletes the key. The owner should also click **Revoke** in the app.
+
+## Special cases
+
+| Situation | Command |
+|---|---|
+| The owner runs the app somewhere else (for example locally) | `aidr setup --app http://localhost:5173` |
+| You already know the wallet number | `aidr setup --wallet 1` |
+| Arc mainnet | `aidr setup --network mainnet --contract 0x…` |
+| The owner gave you an existing key | `export AIDR_AGENT_KEY=0x…` then `aidr init --wallet 1` |
 
 ## Next
 
-See the [CLI reference](/docs/cli-reference) for every command and flag, and [errors](/docs/errors) for what each failure means.
+Let Claude run these commands for you: [use it with Claude](/docs/use-with-claude). Every flag is in the [CLI reference](/docs/cli-reference).
