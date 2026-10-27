@@ -1,6 +1,6 @@
 import { CliError } from "./errors.js";
 /** Where the owner's Aider app runs. Override with --app or AIDR_APP_URL. */
-export const DEFAULT_APP_URL = "http://localhost:5173";
+export const DEFAULT_APP_URL = "https://aider-smoky.vercel.app";
 export function resolveAppUrl(flag) {
     const raw = (flag ?? process.env.AIDR_APP_URL ?? DEFAULT_APP_URL).trim();
     let url;

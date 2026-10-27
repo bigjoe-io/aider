@@ -9,7 +9,7 @@ import { cmdWait } from "./commands/wait.js";
 import { CliError, decodeError, explainError } from "./errors.js";
 import { emitError, hasEmitted, note } from "./output.js";
 
-const VERSION = "0.3.0";
+const VERSION = "0.3.1";
 
 const program = new Command();
 
@@ -29,7 +29,7 @@ program
   .description("Start here. Makes this agent's own key and prints a link the wallet owner opens to add it.")
   .option("--name <label>", "how the agent appears to the owner, e.g. \"Claude Code\"")
   .option("--wallet <id>", "the wallet id, if the owner already told you (otherwise found once the owner adds the agent)")
-  .option("--app <url>", "the Aider app the link opens (default: AIDR_APP_URL or http://localhost:5173)")
+  .option("--app <url>", "the Aider app the link opens (default: AIDR_APP_URL or https://aider-smoky.vercel.app)")
   .option("--network <name>", "testnet (default) or mainnet")
   .option("--mainnet", "same as --network mainnet")
   .option("--contract <address>", "Aider contract address (required on mainnet; testnet defaults to the public deployment)")

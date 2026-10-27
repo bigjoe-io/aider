@@ -1,17 +1,45 @@
 {
   "name": "aidr-cli",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "aidr: the CLI that lets an AI agent pay USDC from an Aider wallet on Arc, inside the owner's limits",
+  "keywords": [
+    "aider",
+    "arc",
+    "usdc",
+    "ai-agent",
+    "agent-wallet",
+    "payments",
+    "cli"
+  ],
+  "license": "MIT",
+  "homepage": "https://github.com/bigjoe-io/aider#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bigjoe-io/aider.git",
+    "directory": "cli"
+  },
+  "bugs": {
+    "url": "https://github.com/bigjoe-io/aider/issues"
+  },
   "type": "module",
   "bin": {
     "aidr": "./dist/index.js"
   },
+  "files": [
+    "dist",
+    "!dist/**/*.map",
+    "!dist/**/*.d.ts",
+    "SKILL.md",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "tsc",
     "dev": "tsx src/index.ts",
     "typecheck": "tsc --noEmit",
     "test": "bun test",
-    "abi:gen": "bun scripts/gen-abi.ts"
+    "abi:gen": "bun scripts/gen-abi.ts",
+    "prepublishOnly": "npm run build"
   },
   "dependencies": {
     "commander": "^12.1.0",

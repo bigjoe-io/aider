@@ -17,8 +17,7 @@ Exit code `0` = success, `1` = error. Amounts in JSON are USDC decimal strings s
 ## Setup (once, on the agent's machine)
 
 ```bash
-# install from the repo
-cd cli && bun install && bun run build && npm link
+npm install -g aidr-cli      # Node 18+
 
 aidr setup --name "Claude Code"
 ```
@@ -29,7 +28,7 @@ Aider app. They choose your limits there and can send you a little USDC for gas.
 `aidr balance`: it finds the wallet by itself. Until they add you, commands fail with `NotLinked`.
 
 Options: `--name <label>`, `--wallet <id>` (if the user told you), `--app <url>` (where their
-Aider app runs; default `AIDR_APP_URL` or `http://localhost:5173`), `--network testnet|mainnet`,
+Aider app runs; default `AIDR_APP_URL` or `https://aider-smoky.vercel.app`), `--network testnet|mainnet`,
 `--contract <address>` (required on mainnet), `--rpc <url>`. Running `setup` again keeps the same key.
 
 If the user instead gives you a key for an address they added by hand:

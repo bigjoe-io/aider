@@ -1,5 +1,5 @@
 /** Where the owner's Aider app runs. Override with --app or AIDR_APP_URL. */
-export declare const DEFAULT_APP_URL = "http://localhost:5173";
+export declare const DEFAULT_APP_URL = "https://aider-smoky.vercel.app";
 export declare function resolveAppUrl(flag: string | undefined): string;
 export interface ConnectLinkInput {
     appUrl: string;
