@@ -53,7 +53,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* Applies the saved theme before first paint (static script, our own code). */}
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
-      <body>
+      {/* Browser extensions (e.g. Grammarly) add attributes to <body> before React loads. */}
+      <body suppressHydrationWarning>
         <Providers>{children}</Providers>
       </body>
     </html>
