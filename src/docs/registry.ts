@@ -1,6 +1,8 @@
 // Server-only module (uses node:fs); import it from server components and route handlers only.
 import fs from 'node:fs'
 import path from 'node:path'
+import { DEFAULT_NETWORK, type AiderNetwork } from '@/aider/config'
+import { applyNetwork } from './markdown'
 
 /**
  * Docs pages live in src/docs/content/<slug>.md with a small frontmatter block:
@@ -98,8 +100,9 @@ export function getDoc(slug: string): DocPage | undefined {
 }
 
 /** The page's markdown as served to agents (frontmatter dropped, includes expanded). */
-export function docMarkdown(page: DocPage): string {
-  return `# ${page.title}\n\n> ${page.summary}\n\n${expandIncludes(page.body).trim()}\n`
+/** The page as markdown for one network (default: the site's default network). */
+export function docMarkdown(page: DocPage, network: AiderNetwork = DEFAULT_NETWORK): string {
+  return `# ${page.title}\n\n> ${page.summary}\n\n${applyNetwork(expandIncludes(page.body), network).trim()}\n`
 }
 
 export function siblings(slug: string): { prev?: DocPage; next?: DocPage } {
@@ -124,7 +127,7 @@ export function searchIndex(): SearchEntry[] {
     group: p.group,
     summary: p.summary,
     headings: [...p.body.matchAll(/^#{2,3} (.+)$/gm)].map((m) => m[1]),
-    text: p.body
+    text: applyNetwork(p.body, DEFAULT_NETWORK)
       .replace(/```[\s\S]*?```/g, ' ')
       .replace(/[#>*`|[\]()-]/g, ' ')
       .replace(/\s+/g, ' ')

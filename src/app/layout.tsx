@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { THEME_INIT_SCRIPT } from '@/lib/theme'
+import { DEFAULT_NETWORK, NETWORK_INIT_SCRIPT } from '@/aider/config'
 import { Providers } from './providers'
 import './globals.css'
 
@@ -48,10 +49,12 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" data-theme="dark" suppressHydrationWarning className={`${geist.variable} ${geistMono.variable}`}>
+    <html lang="en" data-theme="dark" data-network={DEFAULT_NETWORK} suppressHydrationWarning className={`${geist.variable} ${geistMono.variable}`}>
       <head>
         {/* Applies the saved theme before first paint (static script, our own code). */}
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+        {/* Applies the saved network (testnet / mainnet) before our bundles run. */}
+        <script dangerouslySetInnerHTML={{ __html: NETWORK_INIT_SCRIPT }} />
       </head>
       {/* Browser extensions (e.g. Grammarly) add attributes to <body> before React loads. */}
       <body suppressHydrationWarning>

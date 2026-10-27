@@ -3,11 +3,16 @@ title: Owner guide
 summary: Everything you do in the app, as short steps.
 group: Get started
 order: 3
-meta: Where=The Aider app | You need=A browser wallet with test USDC | Network=Arc Testnet
+meta: Where=The Aider app | You need=A browser wallet with USDC | Network={{chain}}
 tags: quickstart, spending-rules, approval-requests
 ---
 
-Open [the app](https://aider-smoky.vercel.app/app) and connect your wallet. Everything below happens there.
+Open [the app](https://aider-smoky.vercel.app/app), check the switch in the top bar says **{{network}}**, and connect your wallet. Everything below happens there.
+
+:::mainnet-undeployed
+> [!WARNING]
+> Aider isn't deployed on Arc mainnet yet, so these steps don't work on mainnet today. Switch to **Testnet** in the top bar to try everything with free test USDC.
+:::
 
 ## Add money
 
@@ -16,7 +21,7 @@ Open [the app](https://aider-smoky.vercel.app/app) and connect your wallet. Ever
 
 ## Add an agent
 
-1. On the agent's computer, run `aidr setup --name "Claude Code"` (see the [agent guide](/docs/quickstart-agents)).
+1. On the agent's computer, run `aidr setup --name "Claude Code"{{setupFlags}}` (see the [agent guide](/docs/quickstart-agents)).
 2. Open the link it prints. **Add agent** opens with the agent's address and name filled in.
 3. Choose its limits:
 

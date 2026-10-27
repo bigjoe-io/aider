@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { ArrowLeft, ArrowRight } from 'lucide-react'
 import { docMarkdown, expandIncludes, getAllDocs, getDoc, siblings } from '@/docs/registry'
-import { Markdown, toc } from '@/docs/markdown'
+import { Markdown, NetText, toc } from '@/docs/markdown'
 import { CopyPageButton, DocLink, Toc } from '@/components/docs/DocsChrome'
 
 export const dynamicParams = false
@@ -32,7 +32,7 @@ export default async function DocPageRoute({ params }: { params: Promise<{ slug:
       <article className="min-w-0 max-w-[780px] flex-1 py-10 lg:py-12">
         <div className="flex items-center justify-between gap-4">
           <p className="text-sm text-accent">{page.group}</p>
-          <CopyPageButton markdown={docMarkdown(page)} />
+          <CopyPageButton markdown={{ testnet: docMarkdown(page, 'testnet'), mainnet: docMarkdown(page, 'mainnet') }} />
         </div>
         <h1 className="mt-3 text-[clamp(2rem,4vw,2.75rem)] font-normal leading-[1.1] tracking-[-0.03em] text-fg">{page.title}</h1>
         {page.summary && <p className="mt-4 text-lg leading-relaxed text-fg-2">{page.summary}</p>}
@@ -42,7 +42,9 @@ export default async function DocPageRoute({ params }: { params: Promise<{ slug:
             {page.meta.map((m) => (
               <div key={m.key} className="min-w-0">
                 <dt className="label">{m.key}</dt>
-                <dd className="mt-1.5 break-words text-[15px] text-fg">{m.value}</dd>
+                <dd className="mt-1.5 break-words text-[15px] text-fg">
+                  <NetText text={m.value} />
+                </dd>
               </div>
             ))}
           </dl>

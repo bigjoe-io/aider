@@ -25,7 +25,7 @@ import {
   parseUsdInput,
 } from '@/components/ui'
 import { AIDER_ABI } from '@/aider/abi'
-import { AIDER_ADDRESS, AIDER_CHAIN_ID, AIDER_CHAIN_NAME, IS_DEFAULT_DEPLOYMENT, IS_TESTNET } from '@/aider/config'
+import { ACTIVE, AIDER_ADDRESS, AIDER_CHAIN_ID, IS_DEFAULT_DEPLOYMENT, IS_TESTNET, NETWORKS, switchNetwork, type AiderNetwork } from '@/aider/config'
 import { useAgents, useAiderVersion, useAiderWrite, type AgentInfo } from '@/aider/hooks'
 import { fmtExpiry, fmtUsd, nowSec, usdInputValue } from '@/aider/format'
 import { useSelectedWallet } from './AppShell'
@@ -50,6 +50,8 @@ interface ConnectRequest {
   label: string
   /** Why this link can't be used with this app, if it can't. */
   problem?: string
+  /** The link is for the other Arc network: offer to switch. */
+  switchTo?: AiderNetwork
 }
 
 /** Reads the link `aidr setup` prints (/connect?agent=…&name=…&chain=…&contract=…). */
@@ -64,7 +66,9 @@ function parseConnectRequest(params: URLSearchParams): ConnectRequest | null {
   const chain = params.get('chain')
   const contract = params.get('contract')
   if (chain && chain !== String(AIDER_CHAIN_ID)) {
-    return { address, label, problem: `This link is for a different network (chain ${chain}). This app runs on ${AIDER_CHAIN_NAME}. Run \`aidr setup\` again with ${IS_TESTNET ? '--network testnet' : '--network mainnet'}.` }
+    const other = Object.values(NETWORKS).find((n) => String(n.chainId) === chain)
+    if (other) return { address, label, switchTo: other.network }
+    return { address, label, problem: `This link is for an unknown network (chain ${chain}). Run \`aidr setup\` again with ${IS_TESTNET ? '--network testnet' : '--network mainnet'}.` }
   }
   if (contract && AIDER_ADDRESS && (!isAddress(contract, { strict: false }) || contract.toLowerCase() !== AIDER_ADDRESS.toLowerCase())) {
     return { address, label, problem: `This link is for a different Aider contract. Run \`aidr setup --contract ${AIDER_ADDRESS}\` on the agent's machine and open the new link.` }
@@ -251,6 +255,25 @@ function LinkDialog({ link, linked, onClose }: { link: ConnectRequest; linked: A
   const { walletId } = useSelectedWallet()
   // Captured on mount: adding the agent makes it active, and that must not swap the dialog mid-flow.
   const [already] = useState(linked?.active ? linked : undefined)
+  if (link.switchTo) {
+    const target = NETWORKS[link.switchTo]
+    return (
+      <Dialog
+        open
+        onClose={onClose}
+        title={`${link.label || 'This agent'} is set up for ${target.displayName}`}
+        description={`You’re on ${ACTIVE.displayName}. Switch networks to add it; the form opens again after the switch.`}
+        footer={
+          <>
+            <Button variant="secondary" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button onClick={() => switchNetwork(target.network)}>Switch to {target.label}</Button>
+          </>
+        }
+      />
+    )
+  }
   if (!already) return <AgentDialog open prefill={link} onClose={onClose} />
   return (
     <Dialog

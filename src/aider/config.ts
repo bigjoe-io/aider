@@ -1,11 +1,18 @@
 /**
  * Aider network / contract configuration, read from NEXT_PUBLIC_AIDER_* env vars at build time.
  * Safe to import from server and client code.
+ *
+ * Both Arc networks are configured side by side (NETWORKS). The *active* one is chosen per visitor
+ * with the network switch: it is stored in localStorage and copied to <html data-network> by
+ * NETWORK_INIT_SCRIPT before any of our JS runs, so on the client the ACTIVE_* exports below match
+ * the visitor's choice. Switching reloads the page. On the server they are the default network,
+ * so server-rendered text that depends on the network must render both variants (<ByNetwork>).
  */
 import { getAddress, isAddress, type Address } from 'viem'
 import { buildAddressExplorerUrl, buildTxExplorerUrl, getUsdc, requireChain } from '@/onchain-facts'
 
 export type AiderNetwork = 'testnet' | 'mainnet'
+export const AIDER_NETWORKS: readonly AiderNetwork[] = ['testnet', 'mainnet']
 
 export const TESTNET_CHAIN_ID = 5042002
 export const MAINNET_CHAIN_ID = 5042
@@ -16,58 +23,142 @@ export const DEFAULT_TESTNET_DEPLOY_BLOCK = 69187895n
 
 // NOTE: each env var must be referenced literally (process.env.NEXT_PUBLIC_X) so Next can inline it.
 const rawNetwork = (process.env.NEXT_PUBLIC_AIDER_NETWORK ?? '').trim().toLowerCase()
+// Legacy single-network variables: they apply to the default network.
 const rawContract = (process.env.NEXT_PUBLIC_AIDER_CONTRACT ?? '').trim()
 const rawDeployBlock = (process.env.NEXT_PUBLIC_AIDER_DEPLOY_BLOCK ?? '').trim()
 const rawRpc = (process.env.NEXT_PUBLIC_AIDER_RPC_URL ?? '').trim()
+const raw = {
+  testnet: {
+    contract: (process.env.NEXT_PUBLIC_AIDER_TESTNET_CONTRACT ?? '').trim(),
+    deployBlock: (process.env.NEXT_PUBLIC_AIDER_TESTNET_DEPLOY_BLOCK ?? '').trim(),
+    rpc: (process.env.NEXT_PUBLIC_AIDER_TESTNET_RPC_URL ?? '').trim(),
+  },
+  mainnet: {
+    contract: (process.env.NEXT_PUBLIC_AIDER_MAINNET_CONTRACT ?? '').trim(),
+    deployBlock: (process.env.NEXT_PUBLIC_AIDER_MAINNET_DEPLOY_BLOCK ?? '').trim(),
+    rpc: (process.env.NEXT_PUBLIC_AIDER_MAINNET_RPC_URL ?? '').trim(),
+  },
+}
 const rawGithub = (process.env.NEXT_PUBLIC_AIDER_GITHUB_URL ?? '').trim()
 const rawX = (process.env.NEXT_PUBLIC_AIDER_X_URL ?? '').trim()
 
-export const AIDER_NETWORK: AiderNetwork = rawNetwork === 'mainnet' ? 'mainnet' : 'testnet'
-export const IS_TESTNET = AIDER_NETWORK === 'testnet'
-export const AIDER_CHAIN_ID: number = IS_TESTNET ? TESTNET_CHAIN_ID : MAINNET_CHAIN_ID
+/** The network a visitor sees until they switch. */
+export const DEFAULT_NETWORK: AiderNetwork = rawNetwork === 'mainnet' ? 'mainnet' : 'testnet'
+
+export interface NetworkConfig {
+  network: AiderNetwork
+  chainId: number
+  /** Human chain name from Arc Studio's facts: "Arc Testnet" | "Arc". */
+  chainName: string
+  /** Short label for the switch. */
+  label: string
+  /** Unambiguous name for text: "Arc Testnet" | "Arc mainnet". */
+  displayName: string
+  explorerBase: string
+  /** The Aider contract, or undefined when it isn't deployed on this network yet. */
+  contract: Address | undefined
+  /** True when `contract` is the public default testnet deployment (the CLI needs no --contract). */
+  isDefaultDeployment: boolean
+  /** First block the activity indexer scans. */
+  deployBlock: bigint
+  /** Optional RPC override. */
+  rpcUrl: string | undefined
+  /** ERC-20 USDC (6 decimals). Never mix with the 18-decimal gas token. */
+  usdc: Address
+  isTestnet: boolean
+}
+
+function parseContract(value: string, name: string): Address | undefined {
+  if (!value) return undefined
+  if (isAddress(value, { strict: false })) return getAddress(value)
+  if (process.env.NODE_ENV !== 'production') console.warn(`[aider] ${name} is not a valid address: ${value}`)
+  return undefined
+}
+
+function buildNetwork(network: AiderNetwork): NetworkConfig {
+  const isTestnet = network === 'testnet'
+  const chainId = isTestnet ? TESTNET_CHAIN_ID : MAINNET_CHAIN_ID
+  const isDefault = network === DEFAULT_NETWORK
+  const r = raw[network]
+  const upper = network.toUpperCase()
+  const contract =
+    parseContract(r.contract, `NEXT_PUBLIC_AIDER_${upper}_CONTRACT`) ??
+    (isDefault ? parseContract(rawContract, 'NEXT_PUBLIC_AIDER_CONTRACT') : undefined) ??
+    (isTestnet ? getAddress(DEFAULT_TESTNET_CONTRACT) : undefined)
+  const isDefaultDeployment = isTestnet && contract !== undefined && contract.toLowerCase() === DEFAULT_TESTNET_CONTRACT.toLowerCase()
+  const blockRaw = r.deployBlock || (isDefault ? rawDeployBlock : '')
+  const deployBlock = /^\d+$/.test(blockRaw) ? BigInt(blockRaw) : isDefaultDeployment ? DEFAULT_TESTNET_DEPLOY_BLOCK : 0n
+  const fact = requireChain(chainId)
+  return {
+    network,
+    chainId,
+    chainName: fact.name,
+    label: isTestnet ? 'Testnet' : 'Mainnet',
+    displayName: isTestnet ? 'Arc Testnet' : 'Arc mainnet',
+    explorerBase: fact.explorerBase,
+    contract,
+    isDefaultDeployment,
+    deployBlock,
+    rpcUrl: r.rpc || (isDefault ? rawRpc : '') || undefined,
+    usdc: getAddress(getUsdc(chainId)?.address ?? '0x3600000000000000000000000000000000000000'),
+    isTestnet,
+  }
+}
+
+export const NETWORKS: Record<AiderNetwork, NetworkConfig> = {
+  testnet: buildNetwork('testnet'),
+  mainnet: buildNetwork('mainnet'),
+}
+
+export const NETWORK_STORAGE_KEY = 'aider-network'
+
+function isNetwork(v: unknown): v is AiderNetwork {
+  return v === 'testnet' || v === 'mainnet'
+}
+
+/**
+ * Inline <head> script (static string, our own code): copies the saved network to <html data-network>
+ * before first paint, so CSS can show the right variant and the bundles below can read it.
+ */
+export const NETWORK_INIT_SCRIPT = `(function(){try{var n=localStorage.getItem('${NETWORK_STORAGE_KEY}');if(n!=='testnet'&&n!=='mainnet')n='${DEFAULT_NETWORK}';document.documentElement.setAttribute('data-network',n);}catch(e){}})();`
+
+function activeNetwork(): AiderNetwork {
+  if (typeof document === 'undefined') return DEFAULT_NETWORK
+  const v = document.documentElement.getAttribute('data-network')
+  return isNetwork(v) ? v : DEFAULT_NETWORK
+}
+
+/** The network this page view uses (the visitor's choice in the browser; the default on the server). */
+export const AIDER_NETWORK: AiderNetwork = activeNetwork()
+export const ACTIVE: NetworkConfig = NETWORKS[AIDER_NETWORK]
+export const IS_TESTNET = ACTIVE.isTestnet
+export const AIDER_CHAIN_ID: number = ACTIVE.chainId
 /** The other Arc chain (mainnet when we run on testnet and vice versa). */
 export const OTHER_ARC_CHAIN_ID: number = IS_TESTNET ? MAINNET_CHAIN_ID : TESTNET_CHAIN_ID
-
-const chainFact = requireChain(AIDER_CHAIN_ID)
-/** Human chain name from Arc Studio's facts: "Arc Testnet" | "Arc". */
-export const AIDER_CHAIN_NAME = chainFact.name
-export const EXPLORER_BASE = chainFact.explorerBase
-
-function resolveContract(): Address | undefined {
-  if (rawContract) {
-    if (isAddress(rawContract, { strict: false })) return getAddress(rawContract)
-    if (process.env.NODE_ENV !== 'production') {
-      console.warn(`[aider] NEXT_PUBLIC_AIDER_CONTRACT is not a valid address: ${rawContract}`)
-    }
-    return undefined
-  }
-  return IS_TESTNET ? getAddress(DEFAULT_TESTNET_CONTRACT) : undefined
-}
-
-/** The Aider contract on the configured network, or undefined when it isn't deployed / configured. */
-export const AIDER_ADDRESS: Address | undefined = resolveContract()
-
+export const AIDER_CHAIN_NAME = ACTIVE.chainName
+export const EXPLORER_BASE = ACTIVE.explorerBase
+/** The Aider contract on the active network, or undefined when it isn't deployed there yet. */
+export const AIDER_ADDRESS: Address | undefined = ACTIVE.contract
 /** True when AIDER_ADDRESS is the public default testnet deployment. */
-export const IS_DEFAULT_DEPLOYMENT =
-  AIDER_ADDRESS !== undefined && IS_TESTNET && AIDER_ADDRESS.toLowerCase() === DEFAULT_TESTNET_CONTRACT.toLowerCase()
-
-function resolveDeployBlock(): bigint {
-  if (rawDeployBlock && /^\d+$/.test(rawDeployBlock)) return BigInt(rawDeployBlock)
-  if (IS_DEFAULT_DEPLOYMENT) return DEFAULT_TESTNET_DEPLOY_BLOCK
-  if (AIDER_ADDRESS && typeof window !== 'undefined') {
-    console.warn('[aider] NEXT_PUBLIC_AIDER_DEPLOY_BLOCK is not set: the activity indexer scans from block 0, which is slow.')
-  }
-  return 0n
-}
-
+export const IS_DEFAULT_DEPLOYMENT = ACTIVE.isDefaultDeployment
 /** First block the indexer scans. */
-export const AIDER_DEPLOY_BLOCK: bigint = resolveDeployBlock()
-
+export const AIDER_DEPLOY_BLOCK: bigint = ACTIVE.deployBlock
 /** Optional RPC override for the Aider chain transport. */
-export const AIDER_RPC_URL: string | undefined = rawRpc || undefined
-
+export const AIDER_RPC_URL: string | undefined = ACTIVE.rpcUrl
 /** ERC-20 USDC on the Aider chain (6 decimals). Never mix with the 18-decimal gas token. */
-export const USDC_ADDRESS: Address = getAddress(getUsdc(AIDER_CHAIN_ID)?.address ?? '0x3600000000000000000000000000000000000000')
+export const USDC_ADDRESS: Address = ACTIVE.usdc
+
+/** Saves the visitor's network and reloads, so every module picks it up. */
+export function switchNetwork(network: AiderNetwork): void {
+  if (network === AIDER_NETWORK) return
+  try {
+    window.localStorage.setItem(NETWORK_STORAGE_KEY, network)
+  } catch {
+    // storage blocked: nothing to persist, so the switch can't survive the reload
+    return
+  }
+  window.location.reload()
+}
 
 export const GITHUB_URL = rawGithub || 'https://github.com/bigjoe-io/aider'
 export const X_URL: string | undefined = rawX || undefined
@@ -79,12 +170,12 @@ const rawE2eAccount = (process.env.NEXT_PUBLIC_AIDER_E2E_ACCOUNT ?? '').trim()
 export const E2E_ACCOUNT: Address | undefined =
   E2E_ENABLED && isAddress(rawE2eAccount, { strict: false }) ? getAddress(rawE2eAccount) : undefined
 
-export function explorerTx(hash: string): string {
-  return buildTxExplorerUrl(AIDER_CHAIN_ID, hash)
+export function explorerTx(hash: string, chainId: number = AIDER_CHAIN_ID): string {
+  return buildTxExplorerUrl(chainId, hash)
 }
 
-export function explorerAddress(address: string): string {
-  return buildAddressExplorerUrl(AIDER_CHAIN_ID, address)
+export function explorerAddress(address: string, chainId: number = AIDER_CHAIN_ID): string {
+  return buildAddressExplorerUrl(chainId, address)
 }
 
 export function explorerBlock(block: bigint | number): string {

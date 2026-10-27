@@ -3,20 +3,32 @@ title: Quickstart
 summary: Your first agent payment in 5 steps, about 10 minutes.
 group: Get started
 order: 2
-meta: Time=About 10 minutes | You need=MetaMask (or another browser wallet) and Node 18+ | Network=Arc Testnet
+meta: Time=About 10 minutes | You need=MetaMask (or another browser wallet) and Node 18+ | Network={{chain}}
 tags: quickstart-owners, quickstart-agents, use-with-claude
 ---
 
-## Step 1: Get test USDC
+:::mainnet-undeployed
+> [!WARNING]
+> Aider isn't deployed on Arc mainnet yet, so these steps don't work on mainnet today. Switch to **Testnet** in the top bar to try everything with free test USDC.
+:::
 
+## Step 1: Get USDC
+
+:::testnet
 1. Install a browser wallet such as MetaMask if you don't have one.
 2. Get free test USDC from [faucet.circle.com](https://faucet.circle.com). Choose **Arc Testnet** and paste your wallet address.
+:::
+
+:::mainnet
+1. Install a browser wallet such as MetaMask if you don't have one.
+2. Put some USDC on **Arc mainnet** in that wallet. This is real money, so start small: a few dollars is plenty.
+:::
 
 On Arc, fees are also paid in USDC, so this one balance covers everything.
 
 ## Step 2: Create your Aider wallet
 
-1. Open [the app](https://aider-smoky.vercel.app/app) and click **Connect wallet**. If asked, switch to Arc Testnet.
+1. Open [the app](https://aider-smoky.vercel.app/app) and click **Connect wallet**. If asked, switch your wallet to {{chain}}.
 2. Click **Create wallet** and confirm.
 3. Click **Deposit**, enter `5` and confirm the two prompts (**Approve**, then **Deposit**).
 
@@ -36,7 +48,7 @@ aidr --version
 In the same terminal:
 
 ```bash title="Terminal"
-aidr setup --name "Claude Code"
+aidr setup --name "Claude Code"{{setupFlags}}
 ```
 
 It prints a link like this:
@@ -44,7 +56,7 @@ It prints a link like this:
 ```text title="Output"
 Open this link where your Aider wallet is, set the limits and click Add agent:
 
-  https://aider-smoky.vercel.app/connect?agent=0x7D47…bebf&name=Claude+Code&…
+  https://aider-smoky.vercel.app/connect?agent=0x7D47…bebf&name=Claude+Code&chain={{chainId}}&…
 ```
 
 Open the link in the browser where your wallet is connected. The **Add agent** form is already filled in:

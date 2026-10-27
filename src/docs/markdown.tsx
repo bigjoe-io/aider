@@ -1,5 +1,6 @@
 import Link from 'next/link'
-import type { ReactNode } from 'react'
+import { Fragment, type ReactNode } from 'react'
+import { AIDER_NETWORKS, NETWORKS, type AiderNetwork, type NetworkConfig } from '@/aider/config'
 import { Callout, CodeBlock, Table, TBody, TD, TH, THead, TR } from '@/components/ui'
 import type { CalloutTone } from '@/components/ui'
 
@@ -8,7 +9,93 @@ import type { CalloutTone } from '@/components/ui'
  * ## / ### headings, paragraphs, - and 1. lists (one nesting level), fenced code with an optional
  * title="…", GFM tables, > [!NOTE] / [!TIP] / [!WARNING] callouts, > quotes, --- rules, and inline
  * `code`, **bold**, *italic*, [text](url).
+ *
+ * Network-aware content: a block between `:::testnet` and `:::` (or `:::mainnet`) only shows on that
+ * network, and `{{name}}` placeholders (see networkVars) are filled in per network. Both variants are
+ * rendered and CSS shows the one for <html data-network>, so pages stay static.
  */
+
+/** Placeholders docs can use as {{name}}. */
+export function networkVars(net: NetworkConfig): Record<string, string> {
+  const contract = net.contract ?? (net.isTestnet ? '0x…' : '<mainnet contract, not deployed yet>')
+  const setupFlags = net.isTestnet
+    ? net.isDefaultDeployment
+      ? ''
+      : ` --contract ${contract}`
+    : ` --network mainnet --contract ${contract}`
+  return {
+    network: net.label,
+    chain: net.displayName,
+    chainId: String(net.chainId),
+    explorer: net.explorerBase,
+    contract,
+    setupFlags,
+    networkFlag: net.isTestnet ? '' : ' --network mainnet',
+    // Fixed values, the same on every network.
+    mainnetContract: NETWORKS.mainnet.contract ?? 'Not deployed yet',
+  }
+}
+
+const VAR = /\{\{(\w+)\}\}/g
+
+function fill(text: string, vars: Record<string, string>): string {
+  return text.replace(VAR, (m, k: string) => vars[k] ?? m)
+}
+
+function hasVars(value: unknown): boolean {
+  return JSON.stringify(value).includes('{{')
+}
+
+/** Deep-copies a parsed block with every string passed through `f`. */
+function mapStrings<T>(value: T, f: (s: string) => string): T {
+  if (typeof value === 'string') return f(value) as T
+  if (Array.isArray(value)) return value.map((v: unknown) => mapStrings(v, f)) as T
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, mapStrings(v, f)])) as T
+  }
+  return value
+}
+
+const NET_OPEN = /^:::(testnet|mainnet)(-undeployed)?\s*$/
+
+/** `:::mainnet-undeployed` blocks only exist while that network has no Aider contract. */
+function keepNetBlock(m: RegExpExecArray): boolean {
+  return !m[2] || !NETWORKS[m[1] as AiderNetwork].contract
+}
+
+/** The markdown as it reads on one network: other networks' blocks removed, placeholders filled. */
+export function applyNetwork(md: string, network: AiderNetwork): string {
+  const out: string[] = []
+  let inside: AiderNetwork | 'skip' | null = null
+  for (const line of md.replace(/\r\n/g, '\n').split('\n')) {
+    const open = NET_OPEN.exec(line.trim())
+    if (open) {
+      inside = keepNetBlock(open) ? (open[1] as AiderNetwork) : 'skip'
+      continue
+    }
+    if (inside && line.trim() === ':::') {
+      inside = null
+      continue
+    }
+    if (inside && inside !== network) continue
+    out.push(line)
+  }
+  return fill(out.join('\n'), networkVars(NETWORKS[network]))
+}
+
+/** Text with {{placeholders}}, shown for the visitor's network. */
+export function NetText({ text }: { text: string }): ReactNode {
+  if (!text.includes('{{')) return text
+  return (
+    <>
+      {AIDER_NETWORKS.map((n) => (
+        <span key={n} data-net={n}>
+          {fill(text, networkVars(NETWORKS[n]))}
+        </span>
+      ))}
+    </>
+  )
+}
 
 export interface TocItem {
   id: string
@@ -116,6 +203,7 @@ type Block =
   | { kind: 'callout'; tone: CalloutTone; text: string[] }
   | { kind: 'quote'; text: string[] }
   | { kind: 'hr' }
+  | { kind: 'net'; network: AiderNetwork; blocks: Block[] }
 
 function splitRow(line: string): string[] {
   let s = line.trim()
@@ -155,6 +243,16 @@ export function parseBlocks(md: string): Block[] {
 
     if (line.trim() === '') {
       i++
+      continue
+    }
+
+    const net = NET_OPEN.exec(line.trim())
+    if (net) {
+      const inner: string[] = []
+      i++
+      while (i < lines.length && lines[i].trim() !== ':::') inner.push(lines[i++])
+      i++
+      if (keepNetBlock(net)) blocks.push({ kind: 'net', network: net[1] as AiderNetwork, blocks: parseBlocks(inner.join('\n')) })
       continue
     }
 
@@ -235,6 +333,7 @@ export function parseBlocks(md: string): Block[] {
       !/^(#{2,3})\s/.test(lines[i]) &&
       !/^`{3,}/.test(lines[i]) &&
       !lines[i].startsWith('>') &&
+      !lines[i].startsWith(':::') &&
       !/^([-*]|\d+\.)\s/.test(lines[i]) &&
       !(lines[i].trim().startsWith('|') && i + 1 < lines.length && /^\s*\|?\s*:?-{2,}/.test(lines[i + 1]))
     )
@@ -265,11 +364,35 @@ export function toc(md: string): TocItem[] {
 
 export function Markdown({ source }: { source: string }) {
   const blocks = parseBlocks(source)
-  return <div className="docs-prose">{blocks.map((b, i) => renderBlock(b, `b${i}`))}</div>
+  return <div className="docs-prose">{blocks.map((b, i) => renderNetBlock(b, `b${i}`))}</div>
+}
+
+/** Renders a block per network when it is network-specific or uses {{placeholders}}. */
+function renderNetBlock(b: Block, key: string, only?: NetworkConfig): ReactNode {
+  if (b.kind === 'net') {
+    return (
+      <div key={key} data-net={b.network}>
+        {b.blocks.map((c, i) => renderNetBlock(c, `${key}-${i}`, NETWORKS[b.network]))}
+      </div>
+    )
+  }
+  if (!hasVars(b)) return renderBlock(b, key)
+  if (only) return renderBlock(mapStrings(b, (s) => fill(s, networkVars(only))), key)
+  return (
+    <Fragment key={key}>
+      {AIDER_NETWORKS.map((n) => (
+        <div key={n} data-net={n}>
+          {renderBlock(mapStrings(b, (s) => fill(s, networkVars(NETWORKS[n]))), `${key}-${n}`)}
+        </div>
+      ))}
+    </Fragment>
+  )
 }
 
 function renderBlock(b: Block, key: string): ReactNode {
   switch (b.kind) {
+    case 'net':
+      return renderNetBlock(b, key)
     case 'heading':
       return b.level === 2 ? (
         <h2 key={key} id={b.id} className="mt-14 scroll-mt-28 text-[28px] font-normal leading-tight tracking-[-0.02em] text-fg first:mt-0">

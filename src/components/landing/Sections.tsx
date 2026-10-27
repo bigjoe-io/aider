@@ -1,7 +1,8 @@
 import { ArrowDown, Bot, Code2, FlaskConical, Network, Search, Users } from 'lucide-react'
-import { Button, Panel } from '@/components/ui'
+import { ArcMark, Button, Panel, UsdcMark } from '@/components/ui'
 import { SectionReveal } from '@/components/site'
-import { AIDER_ADDRESS, AIDER_CHAIN_NAME, explorerAddress } from '@/aider/config'
+import { explorerAddress } from '@/aider/config'
+import { PerNetwork } from '@/components/site/NetworkVariants'
 import { cn } from '@/lib/cn'
 import { DeveloperCode, LivePanelCards, NetworkPill } from './Interactive'
 
@@ -45,9 +46,9 @@ export function Hero() {
 }
 
 const BUILT_ON = [
-  { name: 'Arc', mark: <span className="block size-5 rounded-full border-[3px] border-fg border-b-transparent" /> },
-  { name: 'USDC', mark: <span className="grid size-6 place-items-center rounded-full border-2 border-fg text-[11px] font-semibold">$</span> },
-  { name: 'Arc Studio', mark: <span className="block size-5 rounded-[6px] border-2 border-fg" /> },
+  { name: 'Arc', mark: <ArcMark className="size-7" /> },
+  { name: 'USDC', mark: <UsdcMark className="size-7" /> },
+  { name: 'Arc Studio', mark: <ArcMark className="size-7" /> },
 ]
 
 export function BuiltOn() {
@@ -74,7 +75,7 @@ export function ProductColumns() {
       title: 'Rules enforced onchain',
       text: 'Every limit lives in one small contract on Arc. Only you can withdraw: there is no admin key.',
       cta: 'View the contract',
-      href: AIDER_ADDRESS ? explorerAddress(AIDER_ADDRESS) : '/docs/contract-reference',
+      href: '/docs/contract-reference',
     },
     { label: 'The CLI', title: 'Give it to your agent', text: 'A small command-line tool and a SKILL.md file let Claude Code, or any agent with a terminal, pay on its own.', cta: 'Read SKILL.md', href: '/docs/skill-md' },
   ]
@@ -168,7 +169,9 @@ export function LivePanel() {
     <section className="container-x">
       <Panel className="px-5 py-16 sm:px-10 md:py-24">
         <div className="mx-auto max-w-[760px] text-center">
-          <h2 className="text-h2 text-fg">Live on {AIDER_CHAIN_NAME}</h2>
+          <h2 className="text-h2 text-fg">
+            Live on <PerNetwork>{(net) => net.displayName}</PerNetwork>
+          </h2>
           <p className="text-lead mt-5">
             Fund a wallet, give an agent a key and watch the rules hold. Every payment, request and approval is a real USDC transaction you can look up
             on the explorer.
@@ -346,11 +349,11 @@ export function Developers() {
   return (
     <section id="developers" className="container-x scroll-mt-24 pb-24 md:pb-32">
       <Panel tone="outline" className="grid items-center gap-12 p-8 sm:p-12 lg:grid-cols-[1fr_1.15fr]">
-        <div>
+        <div className="min-w-0">
           <p className="label">For developers and agents</p>
           <h2 className="text-h2 mt-4 text-fg">Give your agent a wallet in two commands</h2>
           <p className="text-lead mt-6">
-            Install the aidr CLI, point it at your wallet, and your agent can check its budget, pay, and wait for approvals. Every command prints JSON.
+            Install the aidr CLI, run aidr setup and open the link it prints. Your agent can then check its budget, pay, and wait for approvals. Every command prints JSON.
           </p>
           <div className="mt-9 flex flex-wrap items-center gap-6">
             <Button href="/docs/cli-reference">CLI reference</Button>
@@ -416,9 +419,13 @@ export function FeatureRows() {
           </>
         }
         intro={
-          <Button href={AIDER_ADDRESS ? explorerAddress(AIDER_ADDRESS) : '/docs/contract-reference'} variant="link" className="text-fg">
-            Verify the contract
-          </Button>
+          <PerNetwork>
+            {(net) => (
+              <Button href={net.contract ? explorerAddress(net.contract, net.chainId) : '/docs/contract-reference'} variant="link" className="text-fg">
+                Verify the contract
+              </Button>
+            )}
+          </PerNetwork>
         }
         items={[
           { title: 'Only you can withdraw', text: 'No admin key, no upgrade path. A wallet’s owner is the only address that can take funds out.' },

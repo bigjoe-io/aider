@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ArrowUp, Check, Copy, Github, ListTree, Menu, Search, X } from 'lucide-react'
 import { buttonClasses, Dialog, Logo } from '@/components/ui'
-import { ThemeSegmented, ThemeToggle } from '@/components/site'
+import { NetworkSwitch, ThemeSegmented, ThemeToggle } from '@/components/site'
 import { GITHUB_URL } from '@/aider/config'
 import { cn } from '@/lib/cn'
 import { isDocsHost, mainOrigin } from '@/lib/hosts'
@@ -105,6 +105,7 @@ export function DocsTopBar({ groups, index }: { groups: NavGroup[]; index: Searc
           <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer" className="hidden items-center gap-2 rounded-full px-3 py-2 text-sm text-fg-2 hover:text-fg sm:flex">
             <Github className="size-4" /> GitHub
           </a>
+          <NetworkSwitch className="hidden sm:inline-flex" />
           <ThemeToggle />
           <OpenAppLink />
         </div>
@@ -171,6 +172,10 @@ export function DocsSidebar({ groups, className, onNavigate }: { groups: NavGrou
         </div>
       ))}
       <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-line px-3 pt-5">
+        <span className="text-sm text-fg-3">Network</span>
+        <NetworkSwitch />
+      </div>
+      <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 px-3">
         <span className="text-sm text-fg-3">Appearance</span>
         <ThemeSegmented />
       </div>
@@ -249,11 +254,13 @@ export function Toc({ items }: { items: { id: string; text: string; level: 2 | 3
   )
 }
 
-export function CopyPageButton({ markdown }: { markdown: string }) {
+export function CopyPageButton({ markdown }: { markdown: Record<'testnet' | 'mainnet', string> }) {
   const [done, setDone] = useState(false)
   const copy = useCallback(async () => {
     try {
-      await navigator.clipboard.writeText(markdown)
+      // The page as it reads on the visitor's network.
+      const network = document.documentElement.getAttribute('data-network') === 'mainnet' ? 'mainnet' : 'testnet'
+      await navigator.clipboard.writeText(markdown[network])
       setDone(true)
       setTimeout(() => setDone(false), 1800)
     } catch {

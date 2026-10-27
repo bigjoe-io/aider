@@ -3,7 +3,8 @@
 import { useState } from 'react'
 import { Check, Clock, ShieldOff } from 'lucide-react'
 import { Button, CodeBlock, Device, Segmented, Skeleton, Toggle } from '@/components/ui'
-import { AIDER_ADDRESS, AIDER_CHAIN_NAME, IS_TESTNET, explorerAddress } from '@/aider/config'
+import { explorerAddress, type NetworkConfig } from '@/aider/config'
+import { PerNetwork } from '@/components/site/NetworkVariants'
 import { useGlobalStats } from '@/aider/hooks'
 import { useAiderLogs } from '@/aider/logs'
 
@@ -17,21 +18,25 @@ import { cn } from '@/lib/cn'
 
 /** Small pill in the hero: which network and contract the app is wired to. */
 export function NetworkPill() {
-  if (!AIDER_ADDRESS)
+  return <PerNetwork>{(net) => <NetworkPillFor net={net} />}</PerNetwork>
+}
+
+function NetworkPillFor({ net }: { net: NetworkConfig }) {
+  if (!net.contract)
     return (
       <span className="inline-flex items-center gap-2 rounded-full border border-line bg-bg/40 px-3 py-1.5 text-[13px] text-fg-2 backdrop-blur">
-        <span className="size-1.5 rounded-full bg-warn" /> Not deployed on {AIDER_CHAIN_NAME} yet
+        <span className="size-1.5 rounded-full bg-warn" /> Not deployed on {net.displayName} yet
       </span>
     )
   return (
     <a
-      href={explorerAddress(AIDER_ADDRESS)}
+      href={explorerAddress(net.contract, net.chainId)}
       target="_blank"
       rel="noopener noreferrer"
       className="inline-flex items-center gap-2 rounded-full border border-line bg-bg/40 px-3 py-1.5 text-[13px] text-fg-2 backdrop-blur transition-colors hover:text-fg"
     >
-      <span className={cn('size-1.5 rounded-full', IS_TESTNET ? 'bg-warn' : 'bg-accent')} />
-      {AIDER_CHAIN_NAME} · contract <span className="mono-num">{shortAddr(AIDER_ADDRESS)}</span>
+      <span className={cn('size-1.5 rounded-full', net.isTestnet ? 'bg-warn' : 'bg-accent')} />
+      {net.displayName} · contract <span className="mono-num">{shortAddr(net.contract)}</span>
     </a>
   )
 }
@@ -59,11 +64,13 @@ export function LiveStats() {
         ))}
       </div>
       <p className="mt-3 text-[13px] text-fg-3">
-        {failed
-          ? 'Couldn’t reach Arc right now.'
-          : AIDER_ADDRESS
-            ? `Live from ${AIDER_CHAIN_NAME}, read straight from the contract’s events.`
-            : 'The contract isn’t deployed on this network yet.'}
+        {failed ? (
+          'Couldn’t reach Arc right now.'
+        ) : (
+          <PerNetwork>
+            {(net) => (net.contract ? `Live from ${net.displayName}, read straight from the contract’s events.` : 'The contract isn’t deployed on this network yet.')}
+          </PerNetwork>
+        )}
       </p>
     </section>
   )
@@ -305,8 +312,9 @@ const DEV_TABS = {
     title: 'Terminal',
     lang: 'bash',
     code: `# once, on the agent's machine
-export AIDR_AGENT_KEY=0x…   # the agent's own key, not yours
-aidr init --wallet 1
+npm install -g aidr-cli
+aidr setup --name "Claude Code"{{setupFlags}}
+# the owner opens the link it prints and clicks Add agent
 
 # inside any task
 aidr balance
@@ -338,12 +346,20 @@ function revokeAgent(uint256 walletId, address agent) external;   // owner only`
   },
 } as const
 
+/** `aidr setup` flags for a network (none on the default testnet deployment). */
+function setupFlags(net: NetworkConfig): string {
+  if (net.isTestnet) return net.isDefaultDeployment ? '' : ` --contract ${net.contract}`
+  return ` --network mainnet --contract ${net.contract ?? '<mainnet contract>'}`
+}
+
 export function DeveloperCode() {
   const [tab, setTab] = useState<keyof typeof DEV_TABS>('terminal')
   const t = DEV_TABS[tab]
   return (
-    <div>
-      <CodeBlock code={t.code} lang={t.lang} title={t.title} className="min-h-[300px]" />
+    <div className="min-w-0">
+      <PerNetwork>
+        {(net) => <CodeBlock code={t.code.replace('{{setupFlags}}', setupFlags(net))} lang={t.lang} title={t.title} className="min-h-[300px]" />}
+      </PerNetwork>
       <div role="tablist" aria-label="Code examples" className="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-sm">
         {(Object.keys(DEV_TABS) as (keyof typeof DEV_TABS)[]).map((k) => (
           <button
@@ -360,11 +376,15 @@ export function DeveloperCode() {
         <a href="/llms.txt" className="text-fg-3 hover:text-fg">
           llms.txt
         </a>
-        {AIDER_ADDRESS && (
-          <a href={explorerAddress(AIDER_ADDRESS)} target="_blank" rel="noopener noreferrer" className="text-fg-3 hover:text-fg">
-            Contract on explorer ↗
-          </a>
-        )}
+        <PerNetwork>
+          {(net) =>
+            net.contract && (
+              <a href={explorerAddress(net.contract, net.chainId)} target="_blank" rel="noopener noreferrer" className="text-fg-3 hover:text-fg">
+                Contract on explorer ↗
+              </a>
+            )
+          }
+        </PerNetwork>
       </div>
     </div>
   )

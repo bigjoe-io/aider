@@ -32,10 +32,25 @@ That's all. The agent can now pay. Follow the [quickstart](/docs/quickstart) for
 | `SKILL.md` | [/skill.md](/skill.md) | Instructions that teach an AI agent to use `aidr` safely. |
 | The Aider contract | Arc | Holds the money and checks every rule. |
 
-## Status
+## Testnet and mainnet
+
+Use the **Testnet / Mainnet** switch in the top bar. The app and these docs follow it.
+
+:::testnet
+You're reading the **Arc Testnet** version. The USDC is free test money from Circle's faucet, so it's the place to try things.
+:::
+
+:::mainnet
+You're reading the **Arc mainnet** version. Payments use real USDC.
+:::
+
+:::mainnet-undeployed
+> [!WARNING]
+> Aider isn't deployed on Arc mainnet yet, so these steps don't work on mainnet today. Switch to **Testnet** in the top bar to try everything with free test USDC.
+:::
 
 > [!WARNING]
-> Aider is experimental and unaudited, and runs on **Arc Testnet**: the USDC is free test money. Use small amounts.
+> Aider is experimental and unaudited. Use small amounts.
 
 ## Next
 

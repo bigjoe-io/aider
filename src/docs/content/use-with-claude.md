@@ -10,6 +10,12 @@ tags: quickstart, skill-md, agent-to-agent
 ## Set up once
 
 1. Finish the [quickstart](/docs/quickstart) so `aidr balance` shows `"status": "active"`.
+
+:::mainnet
+> [!WARNING]
+> On mainnet Claude spends real USDC. Keep the per-payment and daily limits small.
+:::
+
 2. Start Claude Code in a terminal:
 
 ```bash title="Terminal"

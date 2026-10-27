@@ -18,9 +18,18 @@ To update later, run `npm install -g aidr-cli@latest`.
 
 ## Connect to a wallet
 
+:::mainnet-undeployed
+> [!WARNING]
+> Aider isn't deployed on Arc mainnet yet, so these steps don't work on mainnet today. Switch to **Testnet** in the top bar to try everything with free test USDC.
+:::
+
 ```bash title="Terminal"
-aidr setup --name "Claude Code"
+aidr setup --name "Claude Code"{{setupFlags}}
 ```
+
+:::mainnet
+On mainnet, always pass `--network mainnet` and the contract address, as above.
+:::
 
 1. `aidr` makes the agent its own key and keeps it on this computer (in `~/.aidr/key`). It never prints it.
 2. It prints a link. The wallet owner opens it, chooses the limits and clicks **Add agent**.
@@ -84,7 +93,7 @@ This deletes the key. The owner should also click **Revoke** in the app.
 |---|---|
 | The owner runs the app somewhere else (for example locally) | `aidr setup --app http://localhost:5173` |
 | You already know the wallet number | `aidr setup --wallet 1` |
-| Arc mainnet | `aidr setup --network mainnet --contract 0x…` |
+| The other network | Testnet: `aidr setup`. Mainnet: `aidr setup --network mainnet --contract <address>`. |
 | The owner gave you an existing key | `export AIDR_AGENT_KEY=0x…` then `aidr init --wallet 1` |
 
 ## Next

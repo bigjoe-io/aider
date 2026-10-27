@@ -1,8 +1,10 @@
 import Link from 'next/link'
 import { ArrowUpRight } from 'lucide-react'
-import { AIDER_ADDRESS, AIDER_CHAIN_NAME, ARC_STUDIO_URL, EXPLORER_BASE, GITHUB_URL, X_URL, explorerAddress } from '@/aider/config'
+import { ARC_STUDIO_URL, GITHUB_URL, NETWORKS, X_URL, explorerAddress } from '@/aider/config'
+import { PerNetwork } from './NetworkVariants'
 import { Button, IconLink } from '@/components/ui/Button'
 import { Logo } from '@/components/ui/Logo'
+import { ArcMark } from '@/components/ui/ArcMark'
 import { cn } from '@/lib/cn'
 import { FooterArt } from './FooterArt'
 import { ThemeSegmented } from './ThemeToggle'
@@ -41,7 +43,8 @@ const COLUMNS: { title: string; links: FooterLink[] }[] = [
       { label: 'Security model', href: '/docs/security-model' },
       { label: 'Errors', href: '/docs/errors' },
       { label: 'Glossary', href: '/docs/glossary' },
-      { label: 'Arc explorer', href: EXPLORER_BASE },
+      { label: 'Arc explorer', href: NETWORKS.mainnet.explorerBase },
+      { label: 'Testnet explorer', href: NETWORKS.testnet.explorerBase },
       { label: 'Arc Studio', href: ARC_STUDIO_URL },
     ],
   },
@@ -96,7 +99,9 @@ export function SiteFooter({ className }: { className?: string }) {
               <p className="mt-6 max-w-[17ch] text-[28px] font-light leading-[1.15] tracking-[-0.02em] text-fg">
                 Your agent spends. You stay in control.
               </p>
-              <p className="mt-4 text-sm text-fg-3">Built on Arc with Arc Studio</p>
+              <p className="mt-4 flex items-center gap-1.5 text-sm text-fg-3">
+                <ArcMark className="size-4" /> Built on Arc with Arc Studio
+              </p>
               <div className="mt-7 flex items-center gap-1">
                 <IconLink href={GITHUB_URL} aria-label="Aider on GitHub" className="text-fg-2">
                   <GithubIcon />
@@ -128,21 +133,25 @@ export function SiteFooter({ className }: { className?: string }) {
           </div>
 
           <p className="mt-14 text-[13px] leading-relaxed text-fg-3">
-            {AIDER_ADDRESS ? (
-              <>
-                Aider contract on {AIDER_CHAIN_NAME}:{' '}
-                <a
-                  href={explorerAddress(AIDER_ADDRESS)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="break-all font-mono text-fg-2 underline-offset-4 hover:text-fg hover:underline"
-                >
-                  {AIDER_ADDRESS}
-                </a>
-              </>
-            ) : (
-              <>Aider is not deployed on {AIDER_CHAIN_NAME} yet.</>
-            )}
+            <PerNetwork>
+              {(net) =>
+                net.contract ? (
+                  <>
+                    Aider contract on {net.displayName}:{' '}
+                    <a
+                      href={explorerAddress(net.contract, net.chainId)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="break-all font-mono text-fg-2 underline-offset-4 hover:text-fg hover:underline"
+                    >
+                      {net.contract}
+                    </a>
+                  </>
+                ) : (
+                  <>Aider is not deployed on {net.displayName} yet.</>
+                )
+              }
+            </PerNetwork>
           </p>
 
           <div className="mt-6 flex flex-col gap-5 border-t border-line pt-6 md:flex-row md:items-center md:justify-between">

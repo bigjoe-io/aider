@@ -307,3 +307,17 @@
 @media (prefers-reduced-motion: reduce) {
   .aider-marquee { animation: none; }
 }
+
+/* Network variants: <ByNetwork> and the docs render both; <html data-network> picks one. */
+[data-net] {
+  display: contents;
+}
+html[data-network='mainnet'] [data-net='testnet'],
+html:not([data-network='mainnet']) [data-net='mainnet'] {
+  display: none !important;
+}
+html:not([data-network='mainnet']) .net-switch-btn[data-value='testnet'],
+html[data-network='mainnet'] .net-switch-btn[data-value='mainnet'] {
+  background: rgb(var(--surface-2));
+  color: rgb(var(--fg));
+}

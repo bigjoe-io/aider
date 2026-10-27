@@ -5,9 +5,9 @@ import { usePathname } from 'next/navigation'
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Activity, BookOpen, Check, ChevronDown, Inbox, LayoutGrid, ListChecks, Plus, Users } from 'lucide-react'
 import { Button, Card, Input, Logo, Spinner } from '@/components/ui'
-import { ThemeToggle } from '@/components/site'
+import { NetworkSwitch, ThemeToggle } from '@/components/site'
 import { ConnectButton, SwitchNetworkButton } from '@/components/wallet'
-import { AIDER_CHAIN_NAME, IS_TESTNET } from '@/aider/config'
+import { AIDER_CHAIN_NAME, AIDER_NETWORK, switchNetwork } from '@/aider/config'
 import { useAiderReady, useAiderWrite, useMyWallets, usePendingRequests, useWallet, type WalletInfo } from '@/aider/hooks'
 import { cn } from '@/lib/cn'
 import { useMounted } from '@/lib/hooks'
@@ -94,10 +94,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <span className="hidden h-5 w-px bg-line sm:block" />
           {ready && <WalletPicker wallets={wallets} selected={selected} onSelect={choose} />}
           <div className="ml-auto flex items-center gap-2">
-            <span className="hidden items-center gap-2 rounded-full border border-line px-3 py-1.5 text-[13px] text-fg-2 md:inline-flex">
-              <span className={cn('size-1.5 rounded-full', IS_TESTNET ? 'bg-warn' : 'bg-accent')} />
-              {AIDER_CHAIN_NAME}
-            </span>
+            <NetworkSwitch className="hidden md:inline-flex" />
             <ThemeToggle className="hidden sm:inline-flex" />
             <ConnectButton size="sm" />
           </div>
@@ -117,6 +114,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </aside>
         <main id="main" className="min-w-0 flex-1 py-8 lg:py-10">
+          <NetworkSwitch className="mb-6 md:hidden" />
           {body}
         </main>
       </div>
@@ -283,14 +281,19 @@ function WrongChain() {
 function NoContract() {
   return (
     <GateCard
-      title="Aider isn’t deployed on this network yet"
+      title={`Aider isn’t on ${AIDER_NETWORK === 'mainnet' ? 'Arc mainnet' : AIDER_CHAIN_NAME} yet`}
       text={
-        <>
-          Set <code className="font-mono text-fg">NEXT_PUBLIC_AIDER_CONTRACT</code> (and <code className="font-mono text-fg">NEXT_PUBLIC_AIDER_DEPLOY_BLOCK</code>) to the
-          deployed contract for {AIDER_CHAIN_NAME}, then restart the app.
-        </>
+        AIDER_NETWORK === 'mainnet'
+          ? 'The Aider contract hasn’t been deployed to Arc mainnet yet, so there’s nothing to manage here. Switch to Testnet to try it with free test USDC.'
+          : 'No Aider contract is configured for this network.'
       }
-    />
+    >
+      {AIDER_NETWORK === 'mainnet' && (
+        <Button size="lg" onClick={() => switchNetwork('testnet')}>
+          Switch to Testnet
+        </Button>
+      )}
+    </GateCard>
   )
 }
 

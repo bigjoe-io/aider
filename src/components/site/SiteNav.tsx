@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/cn'
 import { useScrolled } from '@/lib/hooks'
 import { ThemeToggle } from './ThemeToggle'
+import { NetworkSwitch } from './Network'
 
 export interface NavLink {
   label: string
@@ -71,6 +72,7 @@ export function SiteNav({ links = SITE_NAV_LINKS, className }: { links?: readonl
           ))}
         </ul>
         <div className="flex items-center gap-1.5 sm:gap-3">
+          <NetworkSwitch className="hidden sm:inline-flex" />
           <ThemeToggle />
           <Button href="/app" size="md" className="hidden sm:inline-flex" iconRight={<ArrowUpRight className="size-4" aria-hidden />}>
             Open app
@@ -98,7 +100,11 @@ export function SiteNav({ links = SITE_NAV_LINKS, className }: { links?: readonl
               </li>
             ))}
           </ul>
-          <Button href="/app" size="lg" className="mt-8 w-full" onClick={() => setOpen(false)}>
+          <div className="mt-8 flex items-center justify-between">
+            <span className="text-sm text-fg-2">Network</span>
+            <NetworkSwitch />
+          </div>
+          <Button href="/app" size="lg" className="mt-6 w-full" onClick={() => setOpen(false)}>
             Open app
           </Button>
         </div>
