@@ -1,0 +1,449 @@
+# Aider — complete documentation
+# Generated from source. For a per-page index see /llms.txt
+
+---
+
+# Introduction
+URL: /docs/introduction
+Summary: What Aider is, who it is for, and the problem it solves.
+
+## The problem
+
+AI agents increasingly need to spend money: API calls, credits, sub-agent fees, dataset downloads.
+The naive solution is to give the agent a wallet with funds — but that hands the agent full control.
+You need something in between: autonomous spending on small things, owner control over anything larger,
+and the ability to cut off access immediately if something goes wrong.
+
+## What Aider does
+
+Aider is a smart contract on Arc. The owner deposits USDC and grants agents access with explicit limits:
+
+- perPaymentLimit: the most an agent can spend in a single transaction
+- dailyLimit: the most an agent can spend per UTC day
+- expiresAt: the key stops working after this Unix timestamp (0 = never)
+- Recipient rules: allow any recipient, or restrict to an approved allowlist
+
+Within-limit payments execute immediately. Over-limit payments create an approval request;
+funds are reserved until the owner approves or rejects it. Revoke an agent in one transaction.
+
+## Who is it for
+
+Owners: developers or teams running AI agents who want to give agents budget without full wallet access.
+Agents: AI coding agents (Claude Code, custom scripts) that need to make payments as part of their work.
+
+## What it is not
+
+Not a custodial service — funds live in the contract, only you can withdraw.
+Not production-ready — unaudited experiment, do not use for large amounts.
+
+---
+
+# Quickstart for owners
+URL: /docs/quickstart-owners
+Summary: Create a wallet, deposit USDC, and add an agent with limits.
+
+Contract address (Arc Testnet): 0xed32e15d81e7864bf19caea4333bd0781f328ba3
+
+## 1. Create a wallet
+
+Call createWallet() — records msg.sender as owner, returns a wallet ID.
+
+## 2. Deposit USDC
+
+First approve the contract:
+  cast send 0x3600000000000000000000000000000000000000 "approve(address,uint256)" \
+    0xed32e15d81e7864bf19caea4333bd0781f328ba3 100000000 \
+    --rpc-url https://rpc.testnet.arc.io --private-key $OWNER_PRIVATE_KEY
+
+Then deposit:
+  cast send 0xed32e15d81e7864bf19caea4333bd0781f328ba3 \
+    "deposit(uint256,uint256)" 1 100000000 \
+    --rpc-url https://rpc.testnet.arc.io --private-key $OWNER_PRIVATE_KEY
+
+100 USDC = 100000000 (6 decimals).
+
+## 3. Add an agent
+
+  cast send 0xed32e15d81e7864bf19caea4333bd0781f328ba3 \
+    "addAgent(uint256,address,string,uint256,uint256,uint256)" \
+    1 0xAGENT_ADDRESS "Claude Code" 100000 500000 0 \
+    --rpc-url https://rpc.testnet.arc.io --private-key $OWNER_PRIVATE_KEY
+
+Parameters: walletId, agentAddress, label, perPaymentLimit (6-dec), dailyLimit (6-dec), expiresAt (0=never).
+
+---
+
+# Quickstart for agents
+URL: /docs/quickstart-agents
+Summary: Install aidr, configure it, and make your first payment.
+
+## Install
+
+  git clone https://github.com/bigjoe-io/aider
+  cd aider/cli && bun install && bun run build
+
+## aidr init
+
+  node dist/index.js init --wallet 1 --key 0xYOUR_PRIVATE_KEY
+
+Saves config to ~/.leash/config.json and key to ~/.leash/key, both mode 600.
+
+## aidr balance
+
+  node dist/index.js balance
+
+JSON response includes wallet.available, agent.remainingToday, agent.perPaymentLimit, agent.active.
+
+## First payment
+
+  node dist/index.js pay 0xRECIPIENT 0.05 "API credits for run #1"
+
+On success: {"status":"paid","txHash":"0x...","amount":"$0.05","memo":"..."}
+Over limit: {"status":"pending_approval","requestId":"3","expiresAt":"..."}
+Error:      {"status":"error","error":"OverPerPaymentLimit","message":"...","hint":"..."}
+
+---
+
+# How it works
+URL: /docs/how-it-works
+Summary: The contract, where funds live, and the life of a payment.
+
+## Actors
+
+Owner: called createWallet(). Deposits funds, sets limits, approves/rejects requests, withdraws.
+Agent: added with addAgent(). Signs agentPay/requestPayment. Cannot withdraw, change limits, or approve.
+
+## The contract
+
+Single non-upgradeable contract on Arc Testnet: 0xed32e15d81e7864bf19caea4333bd0781f328ba3
+Uses ERC-20 USDC at 0x3600000000000000000000000000000000000000 (6 decimals).
+No global admin — each wallet is independently owned.
+
+## Where funds live
+
+balance: total USDC in the wallet (including reserved)
+reserved: locked by pending approval requests
+available: balance − reserved (what agents can spend, owners can withdraw)
+
+## Life of a payment
+
+Instant: agentPay checks wallet/agent/recipient/limit/balance, then transfers USDC directly.
+Request: requestPayment reserves funds, creates PENDING record, owner approves/rejects.
+Blocked: wallet paused, agent revoked/expired, or recipient blocked → revert with custom error.
+
+## Daily limit window
+
+Resets at UTC midnight. Contract uses: block.timestamp − (block.timestamp % 86400).
+First payment each day auto-resets spentToday to 0.
+
+---
+
+# Agent payments
+URL: /docs/agent-payments
+Summary: What agentPay checks, in order, and what each failure means.
+
+agentPay(walletId, to, amount, memo) checks in order:
+
+1. Wallet exists (owner ≠ 0x0)                     → WALLET_NOT_FOUND
+2. Caller is a known agent                           → AgentNotActive
+3. agent.active == true                              → AgentRevokedError
+4. agent.expiresAt == 0 || block.timestamp ≤ expiresAt → AgentExpired
+5. wallet.paused == false                            → WalletPaused
+6. to ≠ 0x0                                          → ZeroAddress
+7. amount > 0                                        → ZeroAmount
+8. !blocklist[walletId][to]                          → RecipientBlocked
+9. if ALLOWLIST mode: allowlist[walletId][to]        → RecipientNotAllowed
+10. amount ≤ agent.perPaymentLimit                   → OverPerPaymentLimit
+11. (daily reset) spentToday + amount ≤ dailyLimit   → OverDailyLimit
+12. balance − reserved ≥ amount                      → InsufficientBalance
+
+On success: spentToday += amount, balance -= amount, IERC20.transfer(to, amount), emit AgentPaid.
+
+---
+
+# Approval requests
+URL: /docs/approval-requests
+Summary: Over-limit payments, fund reservation, approve/reject/expire.
+
+Created by: requestPayment(walletId, to, amount, memo, ttlSeconds)
+CLI hardcodes TTL = 1800 seconds (30 minutes).
+
+States: PENDING → APPROVED | REJECTED | EXPIRED
+
+Fund reservation: wallet.reserved += amount on creation, -= amount on resolution.
+No agent can cause a reservation to disappear — only owner approve/reject, or post-TTL expireRequest().
+
+approveRequest: owner only, re-validates recipient against current policy, transfers USDC.
+rejectRequest: owner only, releases reservation, no funds moved.
+expireRequest: anyone, only after TTL, releases reservation.
+
+Approved requests do NOT count toward agent's daily limit (spentToday is unchanged).
+
+---
+
+# Spending rules
+URL: /docs/spending-rules
+Summary: Every rule — type, default, example, and how to change it.
+
+Agent rules (set via addAgent, changed via updateAgent):
+  perPaymentLimit: uint256, USDC 6-dec, example 100000 ($0.10)
+  dailyLimit:      uint256, USDC 6-dec, example 500000 ($0.50)
+  expiresAt:       uint256, Unix timestamp, 0 = never
+  label:           string, owner reference only
+
+Wallet rules:
+  paused:          bool, default false — blocks all agent payments when true
+  recipientMode:   ANY (0) or ALLOWLIST (1), default ANY
+  allowlist:       mapping address→bool, empty by default
+  blocklist:       mapping address→bool, empty by default, overrides allowlist and mode
+
+Change functions (owner only):
+  updateAgent(walletId, agent, perPaymentLimit, dailyLimit, expiresAt)
+  pauseWallet(walletId, bool)
+  setRecipientMode(walletId, uint8)
+  setAllowlist(walletId, address, bool)
+  setBlocklist(walletId, address, bool)
+
+All changes take effect immediately.
+
+---
+
+# Revoking and pausing
+URL: /docs/revoke-and-pause
+Summary: Revoke one agent or stop every agent at once.
+
+revokeAgent(walletId, agentAddress): sets active=false. Instant, permanent until re-added.
+  After: agentPay and requestPayment revert with AgentRevokedError.
+  Pending requests: NOT auto-rejected. Owner must handle them manually.
+
+pauseWallet(walletId, true): blocks ALL agents. Owner's own actions unaffected.
+pauseWallet(walletId, false): resumes.
+
+Revoke vs pause:
+  revokeAgent    → one agent, reversible with addAgent
+  pauseWallet    → every agent, reversible with pauseWallet(false)
+
+---
+
+# Agent-to-agent payments
+URL: /docs/agent-to-agent
+Summary: One agent paying another agent's wallet directly.
+
+Pass the receiving agent's Ethereum address as `to` in agentPay.
+The contract does not distinguish agents from humans — it is just an address.
+USDC lands in the receiving agent's EOA. No automatic deposit into their Aider wallet.
+Allowlist/blocklist checks still apply.
+
+Example:
+  node dist/index.js pay 0xAGENT_B_ADDRESS 0.08 "Summarisation job for task #42"
+
+---
+
+# Watching activity
+URL: /docs/watching-activity
+Summary: Contract events, what each contains, and how to listen.
+
+Events:
+  WalletCreated(walletId*, owner*)
+  Deposited(walletId*, amount)
+  Withdrawn(walletId*, amount)
+  WalletPausedEvent(walletId*, paused)
+  AgentAdded(walletId*, agent*, label)
+  AgentUpdated(walletId*, agent*)
+  AgentRevoked(walletId*, agent*)
+  AgentPaid(walletId*, agent*, to*, amount, memo)
+  PaymentRequested(requestId*, walletId*, agent*, to, amount, memo, expiresAt)
+  RequestApproved(requestId*, walletId*)
+  RequestRejected(requestId*, walletId*)
+  RequestExpired(requestId*, walletId*)
+  RecipientModeSet(walletId*, mode)
+  AllowlistUpdated(walletId*, recipient, allowed)
+  BlocklistUpdated(walletId*, recipient, blocked)
+
+(* = indexed)
+
+aidr history scans last 10,000 blocks for AgentPaid events filtered by walletId + agent.
+
+viem example:
+  client.watchEvent({ address: CONTRACT, event: parseAbiItem('event AgentPaid(...)'), args: { walletId: 1n }, onLogs: ... })
+
+---
+
+# Security model
+URL: /docs/security-model
+Summary: What a leaked key can and cannot do, and what the owner must protect.
+
+WARNING: Aider is unaudited and experimental.
+
+A compromised agent key CAN:
+  - agentPay up to perPaymentLimit per tx
+  - spend up to dailyLimit per UTC day
+  - create requestPayment for larger amounts (visible to owner)
+
+A compromised agent key CANNOT:
+  - withdraw (owner-only)
+  - change its own limits (owner-only)
+  - approve its own requests (owner-only)
+  - add agents (owner-only)
+  - spend after revokeAgent
+
+Key storage: ~/.leash/config.json and ~/.leash/key, both mode 600.
+Key is never printed, logged, or included in JSON output.
+
+Owner must protect: owner private key (controls all wallets), monitor pending requests,
+revoke unused agents, withdraw idle funds.
+
+Contract protections: ReentrancyGuard, CEI ordering, custom errors, 52 unit tests.
+Not independently audited.
+
+---
+
+# Errors
+URL: /docs/errors
+Summary: Every contract error, the CLI message, and what to do.
+
+WalletPaused        0x3c1bfd9e  wallet is paused           call pauseWallet(id, false)
+AgentNotActive      0x29c9d28e  never added or removed     re-add with addAgent
+AgentRevokedError   0x3d4fa12a  agent was revoked          re-add with addAgent
+AgentExpired        0x8af8ae35  key past expiresAt         updateAgent with later expiresAt
+RecipientNotAllowed 0x6c7bcc15  not on allowlist           setAllowlist or switch to ANY mode
+RecipientBlocked    0x55b6cf7f  on blocklist               setBlocklist(addr, false)
+OverPerPaymentLimit 0x53c98e2e  over per-tx cap            CLI auto-requests; or raise limit
+OverDailyLimit      0x1f2a2005  over daily cap             CLI auto-requests; or wait for reset
+InsufficientBalance 0xf4d678b8  not enough available USDC  deposit more or reduce request
+RequestNotPending   —           request not in PENDING     check status with aidr status
+RequestExpiredError —           TTL passed, owner cannot approve
+RequestNotExpiredYet —          TTL not yet passed, cannot expire
+ZeroAmount          —           amount = 0                 validated by CLI before tx
+ZeroAddress         —           address = 0x0              validated by CLI before tx
+InvalidTTL          —           ttlSeconds = 0             CLI hardcodes 1800, never 0
+NotWalletOwner      —           caller not owner           only owner can call this function
+
+---
+
+# Best practices
+URL: /docs/best-practices
+Summary: Limits, memos, history checks, unused agents, and idle funds.
+
+1. Start with small limits. Raise them later. Think: worst-case daily spend if key is stolen.
+2. One key per agent. Never share. Separate keys = separate revocation + auditable history.
+3. Write clear memos. Good: "API credits — run #42, model gpt-4o". Bad: "payment".
+4. Check aidr history before retrying. A timed-out request may have succeeded onchain.
+5. Revoke unused agents. A dormant key with limits is an unnecessary attack surface.
+6. Withdraw idle funds. Do not leave large balances in the contract long-term.
+
+---
+
+# CLI reference
+URL: /docs/cli-reference
+Summary: Every aidr command — usage, flags, and JSON output.
+
+Binary: node dist/index.js (built from cli/)
+JSON to stdout, human-readable to stderr/stdout. Exit 0 = success, 1 = error.
+
+## init
+  node dist/index.js init --wallet <id> --key <hex> [--contract <addr>] [--mainnet]
+  Flags: --wallet (req), --key (req), --contract (opt, default testnet addr), --mainnet (opt)
+  Output: {"status":"configured","walletId","agentAddress","contractAddress","network","configSaved","keySaved"}
+
+## balance
+  node dist/index.js balance
+  Output: {"wallet":{id,balance,reserved,available,paused},"agent":{address,label,active,perPaymentLimit,dailyLimit,spentToday,remainingToday,expiresAt}}
+
+## pay
+  node dist/index.js pay <to> <amount> <memo> [--no-request]
+  Args: to (Eth addr), amount (decimal USDC), memo (non-empty string)
+  Flags: --no-request (disable requestPayment fallback)
+  Success:  {"status":"paid","txHash","explorer","to","amount","memo","gasUsed"}
+  Pending:  {"status":"pending_approval","requestId","txHash","explorer","to","amount","memo","expiresAt"}
+  Error:    {"status":"error","error","message","hint"}
+  Auto-fallback on: OverPerPaymentLimit, OverDailyLimit, InsufficientBalance
+  No fallback on:   WalletPaused, AgentRevoked, AgentExpired, RecipientBlocked, RecipientNotAllowed
+
+## status
+  node dist/index.js status <requestId>
+  Output: {"requestId","status","walletId","agent","to","amount","memo","expiresAt","expired"}
+  status: PENDING | APPROVED | REJECTED | EXPIRED
+
+## wait
+  node dist/index.js wait <requestId>
+  Polls every 5 seconds until status leaves PENDING.
+  Exit 0 on APPROVED, exit 1 on REJECTED or EXPIRED.
+  No built-in timeout — use: timeout 600 node dist/index.js wait <id>
+
+## history
+  node dist/index.js history
+  Scans last 10,000 blocks for AgentPaid events (this agent + wallet).
+  Output: {"status":"ok","count","total","payments":[{txHash,explorer,blockNumber,walletId,agent,to,toExplorer,amount,memo},...]}
+  Sorted newest-first.
+
+---
+
+# SKILL.md
+URL: /docs/skill-md
+Raw: /skill.md
+Summary: The full skill file for AI coding agents.
+(see /skill.md for the full content)
+
+---
+
+# Contract reference
+URL: /docs/contract-reference
+Summary: Every function, view, event, and error in the Aider contract.
+
+Contract: 0xed32e15d81e7864bf19caea4333bd0781f328ba3 (Arc Testnet)
+USDC: 0x3600000000000000000000000000000000000000
+Solidity 0.8.28, Cancun EVM, non-upgradeable, no admin.
+
+State-mutating (owner-only unless noted):
+  createWallet() → walletId                               anyone
+  deposit(walletId, amount)                               owner
+  withdraw(walletId, amount)                              owner
+  pauseWallet(walletId, bool)                             owner
+  addAgent(walletId, agent, label, perPayment, daily, exp) owner
+  updateAgent(walletId, agent, perPayment, daily, exp)    owner
+  revokeAgent(walletId, agent)                            owner
+  setRecipientMode(walletId, mode)                        owner
+  setAllowlist(walletId, recipient, bool)                 owner
+  setBlocklist(walletId, recipient, bool)                 owner
+  agentPay(walletId, to, amount, memo)                    agent
+  requestPayment(walletId, to, amount, memo, ttl) → requestId  agent
+  approveRequest(requestId)                               owner
+  rejectRequest(requestId)                                owner
+  expireRequest(requestId)                                anyone (after TTL)
+
+View functions:
+  getWallet(walletId) → (owner, balance, reserved, available, paused, mode)
+  getAgent(walletId, agent) → (label, perPaymentLimit, dailyLimit, expiresAt, active, spentToday, dayStart)
+  getRequest(requestId) → PaymentRequest struct
+  getPendingRequests(walletId) → uint256[] (O(n) over all requests)
+  isAllowlisted(walletId, recipient) → bool
+  isBlocklisted(walletId, recipient) → bool
+  isRecipientPermitted(walletId, recipient) → bool
+  nextWalletId() → uint256
+  nextRequestId() → uint256
+  USDC_TOKEN() → address
+
+---
+
+# Glossary
+URL: /docs/glossary
+Summary: Owner, agent, wallet, limit, approval request, reservation, and more.
+
+Owner: address that called createWallet(). Controls funds, limits, approvals, withdrawals.
+Agent: address added with addAgent(). Signs payments. Cannot withdraw, change limits, or approve.
+Agent key: Ethereum private key for the agent. Stored in ~/.leash/key mode 600. Never printed.
+Wallet: contract record (numeric ID) holding a USDC balance and a set of agents. Not an EOA.
+perPaymentLimit: max USDC per single agentPay call. Exceeding → requestPayment.
+dailyLimit: max USDC per UTC day via agentPay. Resets at UTC midnight.
+Approval request: created by requestPayment when over limit. Funds reserved until resolved.
+Reservation: USDC locked by pending requests. available = balance − reserved.
+TTL: seconds before a request can be expired. CLI hardcodes 1800 (30 min). Must be > 0.
+Revoke: revokeAgent() sets active=false. Agent blocked immediately. Reversible with addAgent.
+Pause: pauseWallet(true) blocks all agents on the wallet. Reversible with pauseWallet(false).
+Allowlist: in ALLOWLIST mode, only these addresses can receive agent payments.
+Blocklist: these addresses can never receive agent payments, regardless of mode.
+USDC: USD Coin, 6 decimals, 1 USDC = 1_000_000. ERC-20 at 0x3600000000000000000000000000000000000000.
+Arc: blockchain where USDC is the native gas token.
+spentToday: per-agent daily spend counter. Auto-reset on first payment of each new UTC day.
+dayStart: UTC midnight timestamp when spentToday was last reset.

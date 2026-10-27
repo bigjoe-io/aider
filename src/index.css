@@ -2,12 +2,100 @@
 @tailwind components;
 @tailwind utilities;
 
-* {
-  box-sizing: border-box;
-}
-
+/* ── fonts ─────────────────────────────────────────────────────────── */
 body {
+  font-family: 'DM Sans', sans-serif;
   margin: 0;
-  font-family: system-ui, sans-serif;
   min-height: 100dvh;
 }
+.font-display { font-family: 'Space Grotesk', sans-serif; letter-spacing: -0.03em; }
+.font-mono    { font-family: 'JetBrains Mono', Menlo, monospace; }
+
+/* ── light mode tokens ──────────────────────────────────────────────── */
+:root {
+  --bg:            #f8f8fb;
+  --surface:       #ffffff;
+  --surface-muted: #f1f1f6;
+  --ink:           #0f1923;
+  --ink-2:         #334155;
+  --muted:         #64748b;
+  --subtle:        #94a3b8;
+  --border:        rgba(15, 25, 35, 0.10);
+  --border-strong: rgba(15, 25, 35, 0.22);
+  --accent:        #0f1923;
+  --accent-fg:     #ffffff;
+  --accent-hover:  #1a2e45;
+  --code-bg:       #0f1923;
+  --code-fg:       #e2e8f0;
+  --success:       #16a34a;
+  --danger:        #dc2626;
+  --warning:       #d97706;
+  --focus:         #2563eb;
+}
+
+/* ── dark mode tokens ───────────────────────────────────────────────── */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg:            #0b1320;
+    --surface:       rgba(255,255,255,0.06);
+    --surface-muted: rgba(255,255,255,0.04);
+    --ink:           #f0f4f8;
+    --ink-2:         #cbd5e1;
+    --muted:         #94a3b8;
+    --subtle:        #64748b;
+    --border:        rgba(255,255,255,0.10);
+    --border-strong: rgba(255,255,255,0.22);
+    --accent:        #a8c4e0;
+    --accent-fg:     #0b1320;
+    --accent-hover:  #c5d9ee;
+    --code-bg:       #060d18;
+    --code-fg:       #e2e8f0;
+    --success:       #4ade80;
+    --danger:        #f87171;
+    --warning:       #fbbf24;
+    --focus:         #60a5fa;
+  }
+}
+
+/* ── base ───────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+}
+
+/* ── reduced motion ─────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ── utility: fade-in-up (used by InView wrapper) ───────────────────── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-up {
+  animation: fadeUp 0.4s cubic-bezier(0.25, 0.1, 0.25, 1) both;
+}
+
+/* ── terminal cursor blink ──────────────────────────────────────────── */
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+.cursor-blink {
+  animation: blink 1s step-end infinite;
+}
+
+/* ── scrollbar (code blocks) ────────────────────────────────────────── */
+.thin-scroll::-webkit-scrollbar { width: 4px; height: 4px; }
+.thin-scroll::-webkit-scrollbar-track { background: transparent; }
+.thin-scroll::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 2px; }

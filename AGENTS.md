@@ -10,9 +10,12 @@ This is the **project memory** - what Arc Studio remembers about building this a
 
 | Contract | Network | Address |
 |---|---|---|
-| Leash (v1 build of Aider) | Arc Testnet | 0xed32e15d81e7864bf19caea4333bd0781f328ba3 |
+| Leash (v1) | Arc Testnet | 0xed32e15d81e7864bf19caea4333bd0781f328ba3 |
+| Aider (v2) | Arc Testnet | 0xeb0d286eb7ce6ae7b211511db66a6ed94bf416b2 |
 
-The source in `contracts/Aider.sol` is v2 (renamed from `Leash`). Its ABI is a strict superset of the deployed v1 build, so the app and CLI work with both. v2 is not deployed yet; deploy it before going to mainnet.
+Aider v2 deploy tx: `0xc32daa824f41a5931362f866c11bfba24bd47fa2eb1872e0abfb9298a9d12177`  
+Explorer: https://explorer.testnet.arc.io/address/0xeb0d286eb7ce6ae7b211511db66a6ed94bf416b2  
+Deployed: 2026-10-26T23:26:55.526Z
 
 ## What This App Does
 

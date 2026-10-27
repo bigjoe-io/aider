@@ -11,3 +11,84 @@
 {"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1793018142842}
 {"level":"debug","message":"[vite] connected.","timestamp":1793018146844}
 {"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1793019316519}
+{"level":"debug","message":"[vite] connected.","timestamp":1793020368712}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1793020370844}
+{"level":"debug","message":"[vite] connected.","timestamp":1793020374733}
+{"level":"debug","message":"[vite] connected.","timestamp":1793020396172}
+{"level":"debug","message":"[vite] connected.","timestamp":1793020397202}
+{"level":"debug","message":"[vite] hot updated: /src/index.css","timestamp":1793020403128}
+{"level":"debug","message":"[vite] hot updated: /src/index.css","timestamp":1793020403136}
+{"level":"debug","message":"[vite] connected.","timestamp":1793020409588}
+{"level":"debug","message":"[vite] connected.","timestamp":1793020410124}
+{"level":"debug","message":"[vite] hot updated: /src/App.tsx","timestamp":1793020540721}
+{"level":"debug","message":"[vite] hot updated: /src/index.css","timestamp":1793020540721}
+{"level":"debug","message":"[vite] hot updated: /src/App.tsx","timestamp":1793020540734}
+{"level":"debug","message":"[vite] hot updated: /src/index.css","timestamp":1793020540734}
+{"level":"debug","message":"[vite] hot updated: /src/components/Terminal.tsx","timestamp":1793020548241}
+{"level":"debug","message":"[vite] hot updated: /src/index.css","timestamp":1793020548241}
+{"level":"debug","message":"[vite] hot updated: /src/components/Terminal.tsx","timestamp":1793020548242}
+{"level":"debug","message":"[vite] hot updated: /src/index.css","timestamp":1793020548242}
+{"level":"debug","message":"[vite] hot updated: /src/components/Terminal.tsx","timestamp":1793020563247}
+{"level":"debug","message":"[vite] hot updated: /src/index.css","timestamp":1793020563247}
+{"level":"debug","message":"[vite] hot updated: /src/components/Terminal.tsx","timestamp":1793020563247}
+{"level":"debug","message":"[vite] hot updated: /src/index.css","timestamp":1793020563247}
+{"level":"debug","message":"[vite] hot updated: /src/components/Terminal.tsx","timestamp":1793020571424}
+{"level":"debug","message":"[vite] hot updated: /src/index.css","timestamp":1793020571424}
+{"level":"debug","message":"[vite] hot updated: /src/components/Terminal.tsx","timestamp":1793020571425}
+{"level":"debug","message":"[vite] hot updated: /src/index.css","timestamp":1793020571425}
+{"level":"debug","message":"[vite] hot updated: /src/components/CopyButton.tsx","timestamp":1793020579013}
+{"level":"debug","message":"[vite] hot updated: /src/index.css","timestamp":1793020579013}
+{"level":"debug","message":"[vite] hot updated: /src/components/CopyButton.tsx","timestamp":1793020579014}
+{"level":"debug","message":"[vite] hot updated: /src/index.css","timestamp":1793020579014}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1793020795897}
+{"level":"debug","message":"[vite] connected.","timestamp":1793020830751}
+{"level":"error","message":"Warning: You are calling ReactDOMClient.createRoot() on a container that has already been passed to createRoot() before. Instead, call root.render() on the existing root instead if you want to update it.","timestamp":1793021200742}
+{"level":"debug","message":"[vite] invalidate /src/main.tsx: Could not Fast Refresh (\"true\" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports","timestamp":1793021200786}
+{"level":"debug","message":"[vite] hot updated: /src/main.tsx","timestamp":1793021200786}
+{"level":"debug","message":"[vite] hot updated: /src/index.css","timestamp":1793021200786}
+{"level":"debug","message":"(previous line repeated 1× more)","timestamp":1793021208270}
+{"level":"error","message":"Warning: You are calling ReactDOMClient.createRoot() on a container that has already been passed to createRoot() before. Instead, call root.render() on the existing root instead if you want to update it.","timestamp":1793021208270}
+{"level":"debug","message":"[vite] invalidate /src/main.tsx: Could not Fast Refresh (\"true\" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports","timestamp":1793021208270}
+{"level":"debug","message":"[vite] hot updated: /src/main.tsx","timestamp":1793021208270}
+{"level":"debug","message":"[vite] hot updated: /src/index.css","timestamp":1793021208270}
+{"level":"error","message":"Warning: Invalid hook call. Hooks can only be called inside of the body of a function component. This could happen for one of the following reasons:\n1. You might have mismatching versions of React and the renderer (such as React DOM)\n2. You might be breaking the Rules of Hooks\n3. You might have more than one copy of React in the same app\nSee https://reactjs.org/link/invalid-hook-call for tips about how to debug and fix this problem.","timestamp":1793021208278}
+{"level":"error","message":"(previous line repeated 1× more)","timestamp":1793021208278}
+{"level":"error","message":"Uncaught TypeError: Cannot read properties of null (reading 'useRef')","timestamp":1793021208278,"source":"https://iqomyo0znb0uxyjv7pm3r.preview.studio.arc.io/node_modules/.vite/deps/chunk-TWJ6NINL.js?v=4b843168:1359:29","stack":"TypeError: Cannot read properties of null (reading 'useRef')\n    at Object.useRef (https://iqomyo0znb0uxyjv7pm3r.preview.studio.arc.io/node_modules/.vite/deps/chunk-TWJ6NINL.js?v=4b843168:1359:29)\n    at BrowserRouter (https://iqomyo0znb0uxyjv7pm3r.preview.studio.arc.io/node_modules/.vite/deps/react-router-dom.js?v=84f18bbe:10984:28)\n    at renderWithHooks (https://iqomyo0znb0uxyjv7pm3r.preview.studio.arc.io/node_modules/.vite/deps/chunk-YI6NTZAD.js?v=5cca9a44:18474:26)\n    at mountIndeterminateComponent (https://iqomyo0znb0uxyjv7pm3r.preview.studio.arc.io/node_modules/.vite/deps/chunk-YI6NTZAD.js?v=5cca9a44:21852:21)\n    at beginWork (https://iqomyo0znb0uxyjv7pm3r.preview.studio.arc.io/node_modules/.vite/deps/chunk-YI6NTZAD.js?v=5cca9a44:22840:22)\n    at HTMLUnknownElement.callCallback2 (https://iqomyo0znb0uxyjv7pm3r.preview.studio.arc.io/node_modules/.vite/deps/chunk-YI6NTZAD.js?v=5cca9a44:10558:22)\n    at Object.invokeGuardedCallbackDev (https://iqomyo0znb0uxyjv7pm3r.preview.studio.arc.io/node_modules/.vite/deps/chunk-YI6NTZAD.js?v=5cca9a44:10583:24)\n    at invokeGuardedCallback (https://iqomyo0znb0uxyjv7pm3r.preview.studio.arc.io/node_modules/.vite/deps/chunk-YI6NTZAD.js?v=5cca9a44:10617:39)\n    at beginWork$1 (https://iqomyo0znb0uxyjv7pm3r.preview.studio.arc.io/node_modules/.vite/deps/chunk-YI6NTZAD.js?v=5cca9a44:26696:15)\n    at performUnitOfWork (https://iqomyo0znb0uxyjv7pm3r.preview.studio.arc.io/node_modules/.vite/deps/chunk-YI6NTZAD.js?v=5cca9a44:26129:20)"}
+{"level":"error","message":"(previous line repeated 2× more)","timestamp":1793021208283}
+{"level":"error","message":"Uncaught TypeError: Cannot read properties of null (reading 'useRef')","timestamp":1793021208283,"source":"https://iqomyo0znb0uxyjv7pm3r.preview.studio.arc.io/node_modules/.vite/deps/chunk-TWJ6NINL.js?v=4b843168:1359:29","stack":"TypeError: Cannot read properties of null (reading 'useRef')\n    at Object.useRef (https://iqomyo0znb0uxyjv7pm3r.preview.studio.arc.io/node_modules/.vite/deps/chunk-TWJ6NINL.js?v=4b843168:1359:29)\n    at BrowserRouter (https://iqomyo0znb0uxyjv7pm3r.preview.studio.arc.io/node_modules/.vite/deps/react-router-dom.js?v=84f18bbe:10984:28)\n    at renderWithHooks (https://iqomyo0znb0uxyjv7pm3r.preview.studio.arc.io/node_modules/.vite/deps/chunk-YI6NTZAD.js?v=5cca9a44:18474:26)\n    at mountIndeterminateComponent (https://iqomyo0znb0uxyjv7pm3r.preview.studio.arc.io/node_modules/.vite/deps/chunk-YI6NTZAD.js?v=5cca9a44:21852:21)\n    at beginWork (https://iqomyo0znb0uxyjv7pm3r.preview.studio.arc.io/node_modules/.vite/deps/chunk-YI6NTZAD.js?v=5cca9a44:22840:22)\n    at HTMLUnknownElement.callCallback2 (https://iqomyo0znb0uxyjv7pm3r.preview.studio.arc.io/node_modules/.vite/deps/chunk-YI6NTZAD.js?v=5cca9a44:10558:22)\n    at Object.invokeGuardedCallbackDev (https://iqomyo0znb0uxyjv7pm3r.preview.studio.arc.io/node_modules/.vite/deps/chunk-YI6NTZAD.js?v=5cca9a44:10583:24)\n    at invokeGuardedCallback (https://iqomyo0znb0uxyjv7pm3r.preview.studio.arc.io/node_modules/.vite/deps/chunk-YI6NTZAD.js?v=5cca9a44:10617:39)\n    at beginWork$1 (https://iqomyo0znb0uxyjv7pm3r.preview.studio.arc.io/node_modules/.vite/deps/chunk-YI6NTZAD.js?v=5cca9a44:26696:15)\n    at performUnitOfWork (https://iqomyo0znb0uxyjv7pm3r.preview.studio.arc.io/node_modules/.vite/deps/chunk-YI6NTZAD.js?v=5cca9a44:26129:20)"}
+{"level":"error","message":"The above error occurred in the <BrowserRouter> component:\n\n    at BrowserRouter (https://iqomyo0znb0uxyjv7pm3r.preview.studio.arc.io/node_modules/.vite/deps/react-router-dom.js?v=84f18bbe:10979:3)\n\nConsider adding an error boundary to your tree to customize error handling behavior.\nVisit https://reactjs.org/link/error-boundaries to learn more about error boundaries.","timestamp":1793021208283}
+{"level":"error","message":"Uncaught TypeError: Cannot read properties of null (reading 'useRef')","timestamp":1793021208284,"source":"https://iqomyo0znb0uxyjv7pm3r.preview.studio.arc.io/node_modules/.vite/deps/chunk-YI6NTZAD.js?v=5cca9a44:26344:13","stack":"TypeError: Cannot read properties of null (reading 'useRef')\n    at Object.useRef (https://iqomyo0znb0uxyjv7pm3r.preview.studio.arc.io/node_modules/.vite/deps/chunk-TWJ6NINL.js?v=4b843168:1359:29)\n    at BrowserRouter (https://iqomyo0znb0uxyjv7pm3r.preview.studio.arc.io/node_modules/.vite/deps/react-router-dom.js?v=84f18bbe:10984:28)\n    at renderWithHooks (https://iqomyo0znb0uxyjv7pm3r.preview.studio.arc.io/node_modules/.vite/deps/chunk-YI6NTZAD.js?v=5cca9a44:18474:26)\n    at mountIndeterminateComponent (https://iqomyo0znb0uxyjv7pm3r.preview.studio.arc.io/node_modules/.vite/deps/chunk-YI6NTZAD.js?v=5cca9a44:21852:21)\n    at beginWork (https://iqomyo0znb0uxyjv7pm3r.preview.studio.arc.io/node_modules/.vite/deps/chunk-YI6NTZAD.js?v=5cca9a44:22840:22)\n    at beginWork$1 (https://iqomyo0znb0uxyjv7pm3r.preview.studio.arc.io/node_modules/.vite/deps/chunk-YI6NTZAD.js?v=5cca9a44:26684:22)\n    at performUnitOfWork (https://iqomyo0znb0uxyjv7pm3r.preview.studio.arc.io/node_modules/.vite/deps/chunk-YI6NTZAD.js?v=5cca9a44:26129:20)\n    at workLoopSync (https://iqomyo0znb0uxyjv7pm3r.preview.studio.arc.io/node_modules/.vite/deps/chunk-YI6NTZAD.js?v=5cca9a44:26068:13)\n    at renderRootSync (https://iqomyo0znb0uxyjv7pm3r.preview.studio.arc.io/node_modules/.vite/deps/chunk-YI6NTZAD.js?v=5cca9a44:26047:15)\n    at recoverFromConcurrentError (https://iqomyo0znb0uxyjv7pm3r.preview.studio.arc.io/node_modules/.vite/deps/chunk-YI6NTZAD.js?v=5cca9a44:25664:28)"}
+{"level":"debug","message":"[vite] connected.","timestamp":1793021234598}
+{"level":"debug","message":"[vite] connected.","timestamp":1793021280142}
+{"level":"debug","message":"[vite] connected.","timestamp":1793021310402}
+{"level":"debug","message":"[vite] hot updated: /src/docs/components/DocLayout.tsx","timestamp":1793021329622}
+{"level":"debug","message":"[vite] hot updated: /src/index.css","timestamp":1793021329622}
+{"level":"debug","message":"[vite] hot updated: /src/docs/components/DocLayout.tsx","timestamp":1793021330529}
+{"level":"debug","message":"[vite] hot updated: /src/index.css","timestamp":1793021330529}
+{"level":"debug","message":"[vite] hot updated: /src/docs/pages/Glossary.tsx","timestamp":1793021332367}
+{"level":"debug","message":"[vite] hot updated: /src/index.css","timestamp":1793021332367}
+{"level":"debug","message":"[vite] hot updated: /src/docs/pages/QuickstartOwners.tsx","timestamp":1793021354522}
+{"level":"debug","message":"[vite] hot updated: /src/index.css","timestamp":1793021354522}
+{"level":"debug","message":"[vite] hot updated: /src/docs/pages/CliReference.tsx","timestamp":1793021355324}
+{"level":"debug","message":"[vite] hot updated: /src/index.css","timestamp":1793021355324}
+{"level":"debug","message":"[vite] hot updated: /src/docs/pages/RevokeAndPause.tsx","timestamp":1793021356112}
+{"level":"debug","message":"[vite] hot updated: /src/index.css","timestamp":1793021356112}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1793024203072}
+{"level":"debug","message":"[vite] connected.","timestamp":1793035849038}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1793036228666}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1793036228674}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1793036582721}
+{"level":"debug","message":"[vite] connected.","timestamp":1793046603722}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1793048414330}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1793055467546}
+{"level":"debug","message":"[vite] connected.","timestamp":1793055470355}
+{"level":"debug","message":"[vite] connected.","timestamp":1793055471588}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1793055600975}
+{"level":"debug","message":"[vite] hot updated: /src/App.tsx","timestamp":1793055622004}
+{"level":"debug","message":"[vite] hot updated: /src/index.css","timestamp":1793055622004}
+{"level":"log","message":"[HMR] connected","timestamp":1793056112460}
+{"level":"log","message":"[HMR] connected","timestamp":1793057338080}
+{"level":"log","message":"[HMR] connected","timestamp":1793092911702}
+{"level":"log","message":"[HMR] connected","timestamp":1793094034762}
+{"level":"log","message":"[HMR] connected","timestamp":1793094270758}
+{"level":"log","message":"[HMR] connected","timestamp":1793094982962}
