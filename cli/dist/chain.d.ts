@@ -15,9 +15,14 @@ export interface SignerCtx extends Ctx {
 }
 export declare function makePublicClient(chain: Chain, rpcUrl: string): PublicClient<Transport, Chain>;
 /** Read-only context from ~/.aidr/config.json (no key needed). */
-export declare function loadContext(): Ctx;
+export declare function loadContext(): Promise<Ctx>;
+/**
+ * After `aidr setup`, the agent doesn't know its wallet id yet: find the wallet whose owner added
+ * this agent (AgentAdded events since setup) and where it is still active.
+ */
+export declare function findWallet(cfg: AidrConfig, publicClient: PublicClient<Transport, Chain>): Promise<bigint>;
 /** Context that can sign as the agent (loads ~/.aidr/key). */
-export declare function loadSignerContext(): SignerCtx;
+export declare function loadSignerContext(): Promise<SignerCtx>;
 export declare function txUrl(cfg: Pick<AidrConfig, "explorerUrl">, hash: string): string;
 export declare function addressUrl(cfg: Pick<AidrConfig, "explorerUrl">, address: string): string;
 /** Wraps RPC/contract failures of read calls into friendly CliErrors. */

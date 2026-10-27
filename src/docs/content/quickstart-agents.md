@@ -1,6 +1,6 @@
 ---
 title: Quickstart for agents
-summary: Install aidr on the agent's machine, connect it to a wallet and make a first payment.
+summary: Run one command on the agent's machine, have the owner open a link, and pay.
 group: Get started
 order: 3
 meta: Runs on=The agent's machine | Needs=Node 18+ and bun | Output=One JSON object per command
@@ -19,34 +19,40 @@ npm link        # makes the `aidr` command available
 aidr --help
 ```
 
-## 2. Configure it
-
-The wallet owner gives you a wallet id and the agent's own private key. Put the key in an environment variable so it stays out of your shell history, then run `init`:
+## 2. Set up the agent
 
 ```bash title="Terminal"
-export AIDR_AGENT_KEY=0x…      # the agent's key, never the owner's
-aidr init --wallet 1
+aidr setup --name "Claude Code"
 ```
 
-On Arc Testnet that's all. Arc mainnet has no default contract yet, so pass it:
+`setup` makes the agent its own key, saves it in `~/.aidr/key` (only you can read it) and prints a link:
 
-```bash title="Terminal"
-aidr init --wallet 1 --network mainnet --contract 0x…
+```text title="Output"
+Agent address: 0x7D47…bebf
+
+Open this link where your Aider wallet is, set the limits and click Add agent:
+
+  http://localhost:5173/connect?agent=0x7D47…bebf&name=Claude+Code&chain=5042002&contract=0x…
 ```
 
-`init` checks that the RPC answers on the right chain and that the address really holds an Aider contract. It refuses the owner's key and warns if your key hasn't been added to the wallet yet. It saves `~/.aidr/config.json` and `~/.aidr/key` with private file permissions and never prints the key.
+## 3. The owner opens the link
 
-The agent's address also needs a little USDC of its own to pay gas. Payments themselves come from the Aider wallet.
+The link opens **Add agent** in the Aider app with the address and name filled in. The owner picks the limits and clicks **Add agent**. By default the app also sends the agent 0.05 USDC for gas.
 
-## 3. Check the budget
+Nobody copies a key: it never leaves the agent's machine.
+
+> [!TIP]
+> If the app isn't on `localhost:5173`, pass its address: `aidr setup --app https://your-aider-app.com`, or set `AIDR_APP_URL`. On Arc mainnet add `--network mainnet --contract 0x…`.
+
+## 4. Check the budget
 
 ```bash title="Terminal"
 aidr balance
 ```
 
-Look at `agent.status` (it must be `active`) and `maxDirectPayment`, the largest payment that goes through right now without approval.
+The first time, `aidr` finds the wallet the owner added it to and remembers it. Look at `agent.status` (it must be `active`) and `maxDirectPayment`, the largest payment that goes through right now without approval.
 
-## 4. Pay
+## 5. Pay
 
 ```bash title="Terminal"
 aidr pay 0x8f3…a21 0.05 "API credits for the weather lookup"
@@ -67,9 +73,26 @@ aidr wait 42 --timeout 1.5
 
 `wait` prints the request once it's approved, rejected or expired. Set `--timeout` below your own command timeout and call it again if needed.
 
-## 5. Give the rules to your coding agent
+## 6. Give the rules to your coding agent
 
 If the agent is an AI coding tool such as Claude Code, give it [SKILL.md](/docs/skill-md). It tells the agent when to check its balance, how to read each result and what never to do.
+
+## Advanced: use a key you already have
+
+If the owner added an address by hand and you have its private key, use `init` instead of `setup`:
+
+```bash title="Terminal"
+export AIDR_AGENT_KEY=0x…      # the agent's own key, never the owner's
+aidr init --wallet 1
+```
+
+## Remove the agent from this machine
+
+```bash title="Terminal"
+aidr reset --yes
+```
+
+This deletes the key and config. To stop the agent paying, the owner revokes it in the app.
 
 ## Next
 

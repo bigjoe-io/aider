@@ -1,8 +1,8 @@
 import { createPublicClient, createWalletClient, http, } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { AIDER_ABI } from "./abi.js";
-import { loadConfig, loadKey } from "./config.js";
-import { decodeError, isContractRejection, toCliError } from "./errors.js";
+import { loadConfig, loadKey, writeConfig } from "./config.js";
+import { CliError, decodeError, isContractRejection, toCliError } from "./errors.js";
 import { chainFor } from "./networks.js";
 export function makePublicClient(chain, rpcUrl) {
     return createPublicClient({
@@ -12,21 +12,74 @@ export function makePublicClient(chain, rpcUrl) {
     });
 }
 /** Read-only context from ~/.aidr/config.json (no key needed). */
-export function loadContext() {
+export async function loadContext() {
     const cfg = loadConfig();
     const chain = chainFor(cfg.chainId, cfg.rpcUrl, cfg.explorerUrl);
+    const publicClient = makePublicClient(chain, cfg.rpcUrl);
+    if (!cfg.walletId) {
+        cfg.walletId = (await findWallet(cfg, publicClient)).toString();
+        writeConfig(cfg);
+    }
     return {
         cfg,
         chain,
-        publicClient: makePublicClient(chain, cfg.rpcUrl),
+        publicClient,
         contract: cfg.contract,
         walletId: BigInt(cfg.walletId),
         agentAddress: cfg.agentAddress,
     };
 }
+/** Arc's eth_getLogs accepts at most 10,000 blocks (inclusive). */
+const FIND_WINDOW = 9500n;
+/**
+ * After `aidr setup`, the agent doesn't know its wallet id yet: find the wallet whose owner added
+ * this agent (AgentAdded events since setup) and where it is still active.
+ */
+export async function findWallet(cfg, publicClient) {
+    const link = cfg.connectLink ? `Ask the owner to open this link and add the agent: ${cfg.connectLink}` : "Ask the owner to add this agent in the Aider app.";
+    if (cfg.setupBlock === undefined) {
+        throw new CliError("NotLinked", "This agent isn't linked to a wallet yet.", `${link} Or run: aidr setup --wallet <walletId>`);
+    }
+    const ids = new Set();
+    try {
+        const latest = await publicClient.getBlockNumber();
+        for (let from = BigInt(cfg.setupBlock); from <= latest; from += FIND_WINDOW) {
+            const to = from + FIND_WINDOW - 1n < latest ? from + FIND_WINDOW - 1n : latest;
+            const logs = await publicClient.getContractEvents({
+                address: cfg.contract,
+                abi: AIDER_ABI,
+                eventName: "AgentAdded",
+                args: { agent: cfg.agentAddress },
+                fromBlock: from,
+                toBlock: to,
+                strict: true,
+            });
+            for (const l of logs)
+                ids.add(l.args.walletId);
+        }
+    }
+    catch (err) {
+        throw toCliError(decodeError(err), { rpcUrl: cfg.rpcUrl });
+    }
+    const active = [];
+    for (const id of ids) {
+        const agent = await readAgent(publicClient, cfg.contract, id, cfg.agentAddress).catch((err) => {
+            throw toCliError(decodeError(err), { rpcUrl: cfg.rpcUrl });
+        });
+        if (agent.active)
+            active.push(id);
+    }
+    if (active.length === 0) {
+        throw new CliError("NotLinked", "The owner hasn't added this agent to a wallet yet.", `${link} Then run this command again.`);
+    }
+    if (active.length > 1) {
+        throw new CliError("AmbiguousWallet", `This agent was added to more than one wallet (${active.map((i) => `#${i}`).join(", ")}).`, `Pick one: aidr setup --wallet <walletId>`);
+    }
+    return active[0];
+}
 /** Context that can sign as the agent (loads ~/.aidr/key). */
-export function loadSignerContext() {
-    const ctx = loadContext();
+export async function loadSignerContext() {
+    const ctx = await loadContext();
     const account = privateKeyToAccount(loadKey(ctx.cfg));
     const walletClient = createWalletClient({
         account,

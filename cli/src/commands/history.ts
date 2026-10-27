@@ -105,7 +105,7 @@ async function blockTimes(publicClient: PublicClient<Transport, Chain>, blocks: 
 export async function cmdHistory(opts: HistoryOptions): Promise<void> {
   const limit = Number(parsePositiveInt(opts.limit, "--limit", BigInt(DEFAULT_LIMIT), 1000n));
   const blocks = parsePositiveInt(opts.blocks, "--blocks", DEFAULT_BLOCKS, 10_000_000n);
-  const ctx = loadContext();
+  const ctx = await loadContext();
 
   const latest = await rpc(ctx, () => ctx.publicClient.getBlockNumber());
   const deployBlock = BigInt(ctx.cfg.deployBlock);

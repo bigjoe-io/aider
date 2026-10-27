@@ -36,9 +36,9 @@ Your owner key controls everything in your wallet. Keep it in a browser or hardw
 
 ## Where the agent key lives
 
-`aidr init` stores the agent's key in `~/.aidr/key` and its settings in `~/.aidr/config.json`. The folder is created with mode 700 and the files with mode 600, so only that user can read them. The CLI never prints the key and redacts it from every output.
+`aidr setup` creates the agent's key on the agent's machine, so it never passes through the owner, the app or a chat. It stores it in `~/.aidr/key` and its settings in `~/.aidr/config.json`. The folder is created with mode 700 and the files with mode 600, so only that user can read them. The CLI never prints the key and redacts it from every output.
 
-Pass the key with the `AIDR_AGENT_KEY` environment variable rather than `--key`, so it doesn't end up in your shell history.
+If you import an existing key with `aidr init`, pass it with the `AIDR_AGENT_KEY` environment variable rather than `--key`, so it doesn't end up in your shell history.
 
 ## What the contract guarantees
 

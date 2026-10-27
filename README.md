@@ -83,8 +83,8 @@ See the [contract reference](src/docs/content/contract-reference.md) for every f
 
 ```bash
 cd cli && bun install && bun run build && npm link
-export AIDR_AGENT_KEY=0x…        # the agent's own key, never the owner's
-aidr init --wallet 1
+aidr setup --name "Claude Code"  # makes the agent's key, prints a link for the owner
+# the owner opens the link and clicks Add agent
 aidr balance
 aidr pay 0xRecipient 0.05 "API credits"
 aidr wait 42

@@ -1,13 +1,16 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useReadContracts } from 'wagmi'
+import { getAddress, isAddress } from 'viem'
 import { Plus, Terminal } from 'lucide-react'
 import {
   Address,
   AddressInput,
   AmountInput,
   Button,
+  Callout,
   Card,
   CodeBlock,
   ConfirmDialog,
@@ -17,11 +20,12 @@ import {
   Segmented,
   Skeleton,
   StatusPill,
+  Toggle,
   parseAddressInput,
   parseUsdInput,
 } from '@/components/ui'
 import { AIDER_ABI } from '@/aider/abi'
-import { AIDER_ADDRESS, AIDER_CHAIN_ID, IS_DEFAULT_DEPLOYMENT, IS_TESTNET } from '@/aider/config'
+import { AIDER_ADDRESS, AIDER_CHAIN_ID, AIDER_CHAIN_NAME, IS_DEFAULT_DEPLOYMENT, IS_TESTNET } from '@/aider/config'
 import { useAgents, useAiderVersion, useAiderWrite, type AgentInfo } from '@/aider/hooks'
 import { fmtExpiry, fmtUsd, nowSec, usdInputValue } from '@/aider/format'
 import { useSelectedWallet } from './AppShell'
@@ -38,6 +42,45 @@ function expiryFrom(choice: string): bigint {
   return BigInt(nowSec() + Number(choice) * 86_400)
 }
 
+/** USDC sent to a new agent so it can pay gas (Arc's gas token is USDC). */
+const GAS_TOPUP = 50_000n
+
+interface ConnectRequest {
+  address: `0x${string}`
+  label: string
+  /** Why this link can't be used with this app, if it can't. */
+  problem?: string
+}
+
+/** Reads the link `aidr setup` prints (/connect?agent=…&name=…&chain=…&contract=…). */
+function parseConnectRequest(params: URLSearchParams): ConnectRequest | null {
+  const agent = params.get('agent')?.trim()
+  if (!agent) return null
+  const label = (params.get('name') ?? '').trim().slice(0, 48)
+  if (!isAddress(agent, { strict: false })) {
+    return { address: '0x0000000000000000000000000000000000000000', label, problem: 'This connect link has no valid agent address. Ask the agent to run `aidr setup` again and send the new link.' }
+  }
+  const address = getAddress(agent)
+  const chain = params.get('chain')
+  const contract = params.get('contract')
+  if (chain && chain !== String(AIDER_CHAIN_ID)) {
+    return { address, label, problem: `This link is for a different network (chain ${chain}). This app runs on ${AIDER_CHAIN_NAME}. Run \`aidr setup\` again with ${IS_TESTNET ? '--network testnet' : '--network mainnet'}.` }
+  }
+  if (contract && AIDER_ADDRESS && (!isAddress(contract, { strict: false }) || contract.toLowerCase() !== AIDER_ADDRESS.toLowerCase())) {
+    return { address, label, problem: `This link is for a different Aider contract. Run \`aidr setup --contract ${AIDER_ADDRESS}\` on the agent's machine and open the new link.` }
+  }
+  return { address, label }
+}
+
+/** The `aidr setup` command for this app's network, contract and address. */
+function setupCommand(extra = ''): string {
+  const network = IS_TESTNET ? '' : ' --network mainnet'
+  const contract = IS_DEFAULT_DEPLOYMENT ? '' : ` --contract ${AIDER_ADDRESS}`
+  const origin = typeof window === 'undefined' ? '' : window.location.origin
+  const app = origin && origin !== 'http://localhost:5173' ? ` --app ${origin}` : ''
+  return `aidr setup${extra}${network}${contract}${app}`
+}
+
 export function AgentsPage() {
   const { walletId } = useSelectedWallet()
   const { agents, isLoading } = useAgents(walletId)
@@ -47,6 +90,11 @@ export function AgentsPage() {
   const [revoking, setRevoking] = useState<AgentInfo | null>(null)
   const [connecting, setConnecting] = useState<AgentInfo | null>(null)
   const { write, isPending } = useAiderWrite()
+  const router = useRouter()
+  const params = useSearchParams()
+  const link = useMemo(() => parseConnectRequest(params), [params])
+  const linked = link ? agents.find((a) => a.address.toLowerCase() === link.address.toLowerCase()) : undefined
+  const clearLink = () => router.replace('/app/agents', { scroll: false })
 
   const openCounts = useReadContracts({
     allowFailure: true,
@@ -83,7 +131,9 @@ export function AgentsPage() {
       ) : agents.length === 0 ? (
         <Card className="p-10 text-center">
           <p className="text-lg text-fg">No agents yet</p>
-          <p className="mx-auto mt-2 max-w-md text-[15px] text-fg-2">Add an agent’s address and choose how much it can spend. You’ll get the commands to connect it.</p>
+          <p className="mx-auto mt-2 max-w-md text-[15px] text-fg-2">
+            Run <code className="font-mono text-fg">aidr setup</code> on the agent’s machine and open the link it prints. You only choose how much it can spend.
+          </p>
           <Button className="mt-6" onClick={() => setAdding(true)}>
             Add your first agent
           </Button>
@@ -171,6 +221,7 @@ export function AgentsPage() {
       )}
 
       <AgentDialog open={adding} onClose={() => setAdding(false)} />
+      {link && !isLoading && <LinkDialog key={link.address} link={link} linked={linked} onClose={clearLink} />}
       {editing && <AgentDialog open agent={editing} onClose={() => setEditing(null)} />}
       {connecting && <ConnectDialog agent={connecting} onClose={() => setConnecting(null)} />}
       <ConfirmDialog
@@ -195,12 +246,30 @@ export function AgentsPage() {
   )
 }
 
-function AgentDialog({ open, onClose, agent }: { open: boolean; onClose: () => void; agent?: AgentInfo }) {
+/** Opened from a connect link. Decides once, on open, whether the agent still needs adding. */
+function LinkDialog({ link, linked, onClose }: { link: ConnectRequest; linked: AgentInfo | undefined; onClose: () => void }) {
+  const { walletId } = useSelectedWallet()
+  // Captured on mount: adding the agent makes it active, and that must not swap the dialog mid-flow.
+  const [already] = useState(linked?.active ? linked : undefined)
+  if (!already) return <AgentDialog open prefill={link} onClose={onClose} />
+  return (
+    <Dialog
+      open
+      onClose={onClose}
+      title={`${already.label || 'This agent'} is already connected`}
+      description={`It’s an active agent on wallet #${walletId.toString()}. On its machine, aidr balance should work now.`}
+      footer={<Button onClick={onClose}>Done</Button>}
+    />
+  )
+}
+
+function AgentDialog({ open, onClose, agent, prefill }: { open: boolean; onClose: () => void; agent?: AgentInfo; prefill?: ConnectRequest }) {
   const { walletId, owner } = useSelectedWallet()
-  const { write, isPending } = useAiderWrite()
+  const { write, sendUsdc, isPending } = useAiderWrite()
   const editing = !!agent
-  const [addr, setAddr] = useState(agent?.address ?? '')
-  const [label, setLabel] = useState(agent?.label ?? '')
+  const [addr, setAddr] = useState(agent?.address ?? prefill?.address ?? '')
+  const [label, setLabel] = useState(agent?.label ?? prefill?.label ?? '')
+  const [sendGas, setSendGas] = useState(true)
   const [per, setPer] = useState(agent ? usdInputValue(agent.perPaymentLimit) : '0.10')
   const [daily, setDaily] = useState(agent ? usdInputValue(agent.dailyLimit) : '0.50')
   const [expiry, setExpiry] = useState(agent && agent.expiresAt === 0n ? 'never' : '30')
@@ -209,14 +278,17 @@ function AgentDialog({ open, onClose, agent }: { open: boolean; onClose: () => v
   const addrError = a.error ?? (a.address && a.address.toLowerCase() === owner.toLowerCase() ? 'This is your own address. Use a separate key for the agent.' : undefined)
   const p = parseUsdInput(per, { allowZero: true })
   const d = parseUsdInput(daily, { allowZero: true })
-  const ok = !!a.address && !addrError && p.raw !== undefined && !p.error && d.raw !== undefined && !d.error
+  const ok = !prefill?.problem && !!a.address && !addrError && p.raw !== undefined && !p.error && d.raw !== undefined && !d.error
 
   const submit = async () => {
     if (!ok || !a.address || p.raw === undefined || d.raw === undefined) return
     const res = editing
       ? await write('updateAgent', [walletId, a.address, p.raw, d.raw, expiryFrom(expiry)], { pending: 'Saving limits…', success: 'Limits updated' })
       : await write('addAgent', [walletId, a.address, label.trim(), p.raw, d.raw, expiryFrom(expiry)], { pending: 'Adding agent…', success: `${label.trim() || 'Agent'} added` })
-    if (res.ok) onClose()
+    if (!res.ok) return
+    // The agent is added either way; a skipped or failed gas transfer can be retried from "Connect this agent".
+    if (!editing && sendGas) await sendUsdc(a.address, GAS_TOPUP, { pending: 'Sending gas…', success: 'Sent 0.05 USDC for gas' })
+    onClose()
   }
 
   return (
@@ -224,8 +296,14 @@ function AgentDialog({ open, onClose, agent }: { open: boolean; onClose: () => v
       open={open}
       onClose={onClose}
       dismissible={!isPending}
-      title={editing ? `Edit ${agent?.label || 'agent'}` : 'Add an agent'}
-      description={editing ? 'New limits apply to the next payment. Today’s spending is kept.' : 'Give a key its own allowance. Never use your own wallet key.'}
+      title={editing ? `Edit ${agent?.label || 'agent'}` : prefill ? `Add ${prefill.label || 'this agent'}` : 'Add an agent'}
+      description={
+        editing
+          ? 'New limits apply to the next payment. Today’s spending is kept.'
+          : prefill
+            ? `The agent made its own key with aidr setup. Choose its limits and it joins wallet #${walletId.toString()}.`
+            : `Choose how much it can spend from wallet #${walletId.toString()}.`
+      }
       footer={
         <>
           <Button variant="secondary" onClick={onClose} disabled={isPending}>
@@ -238,8 +316,16 @@ function AgentDialog({ open, onClose, agent }: { open: boolean; onClose: () => v
       }
     >
       <div className="space-y-4">
-        <Field id="agent-addr" label="Agent address" error={addr ? addrError : undefined} hint="The address of the key the agent will use.">
-          <AddressInput value={addr} onChange={setAddr} disabled={editing} />
+        {prefill?.problem && <Callout tone="danger" title="This link can’t be used here">{prefill.problem}</Callout>}
+        {!editing && !prefill && (
+          <div>
+            <p className="mb-2 text-sm text-fg">Easiest: run this on the agent’s machine and open the link it prints</p>
+            <CodeBlock code={setupCommand(' --name "Claude Code"')} lang="bash" wrap />
+            <p className="mt-3 text-[13px] text-fg-3">Or paste an address whose key the agent already has:</p>
+          </div>
+        )}
+        <Field id="agent-addr" label="Agent address" error={addr ? addrError : undefined} hint={prefill ? 'From the agent’s connect link.' : 'The address of the key the agent will use.'}>
+          <AddressInput value={addr} onChange={setAddr} disabled={editing || !!prefill} />
         </Field>
         {!editing && (
           <Field id="agent-label" label="Label" hint="A name you’ll recognise, like “Claude Code”.">
@@ -261,6 +347,15 @@ function AgentDialog({ open, onClose, agent }: { open: boolean; onClose: () => v
             {expiry === 'never' ? 'The key works until you revoke it.' : `The key stops working ${expiry} days from now. You can extend it later.`}
           </p>
         </div>
+        {!editing && (
+          <div className="flex items-start justify-between gap-4 border-t border-line pt-4">
+            <div>
+              <p id="agent-gas" className="text-sm text-fg">Send 0.05 USDC for gas</p>
+              <p className="mt-1 text-[13px] text-fg-3">From your connected wallet to the agent’s address. On Arc, gas is paid in USDC, so the agent needs a little to send payments.</p>
+            </div>
+            <Toggle checked={sendGas} onChange={setSendGas} labelledBy="agent-gas" />
+          </div>
+        )}
       </div>
     </Dialog>
   )
@@ -268,22 +363,43 @@ function AgentDialog({ open, onClose, agent }: { open: boolean; onClose: () => v
 
 function ConnectDialog({ agent, onClose }: { agent: AgentInfo; onClose: () => void }) {
   const { walletId } = useSelectedWallet()
+  const { sendUsdc, isPending } = useAiderWrite()
+  const name = agent.label || 'this agent'
   const network = IS_TESTNET ? '' : ' --network mainnet'
   const contract = IS_DEFAULT_DEPLOYMENT ? '' : ` --contract ${AIDER_ADDRESS}`
-  const code = `# on the agent's machine, once
-cd cli && bun install && bun run build && npm link
-
-# the private key of ${agent.address}
-export AIDR_AGENT_KEY=0x…
-aidr init --wallet ${walletId.toString()}${network}${contract}
-
-# check it worked
-aidr balance`
+  const importCode = `export AIDR_AGENT_KEY=0x…   # the private key of ${agent.address}
+aidr init --wallet ${walletId.toString()}${network}${contract}`
   return (
-    <Dialog open onClose={onClose} size="lg" title={`Connect ${agent.label || 'this agent'}`} description="Run these on the machine the agent runs on. The key stays there; it never comes back to this app.">
-      <CodeBlock code={code} lang="bash" title="Terminal" />
+    <Dialog
+      open
+      onClose={onClose}
+      size="lg"
+      title={`Connect ${name}`}
+      description="Run this on the agent’s machine to check it’s connected."
+      footer={
+        <>
+          <Button variant="secondary" loading={isPending} onClick={() => void sendUsdc(agent.address, GAS_TOPUP, { pending: 'Sending gas…', success: 'Sent 0.05 USDC for gas' })}>
+            Send 0.05 USDC for gas
+          </Button>
+          <Button onClick={onClose}>Done</Button>
+        </>
+      }
+    >
+      <CodeBlock code="aidr balance" lang="bash" title="Terminal" />
+      <p className="mt-4 text-[14px] leading-relaxed text-fg-2">
+        If you added {name} from the link <code className="font-mono text-fg">aidr setup</code> printed, there’s nothing else to do: the agent finds wallet #{walletId.toString()} by itself.
+      </p>
+      <details className="mt-5 rounded-2xl border border-line px-4 py-3 text-[14px] text-fg-2">
+        <summary className="cursor-pointer text-fg">Added the address by hand?</summary>
+        <p className="mt-3">Run this on the machine that has the agent’s key. Never use your own wallet key.</p>
+        <CodeBlock className="mt-3" code={importCode} lang="bash" />
+      </details>
       <p className="mt-4 text-[13px] leading-relaxed text-fg-3">
-        The agent’s address also needs a little USDC of its own for gas. Coding agents should read{' '}
+        Not installed yet? See the{' '}
+        <a href="/docs/quickstart-agents" className="text-fg underline underline-offset-2">
+          agent quickstart
+        </a>
+        . Coding agents should read{' '}
         <a href="/docs/skill-md" className="text-fg underline underline-offset-2">
           SKILL.md
         </a>{' '}

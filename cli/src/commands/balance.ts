@@ -16,7 +16,7 @@ function iso(ts: bigint): string {
 }
 
 export async function cmdBalance(): Promise<void> {
-  const ctx = loadContext();
+  const ctx = await loadContext();
   const { publicClient, contract, walletId, agentAddress, cfg } = ctx;
 
   const [wallet, agent, now] = await rpc(ctx, () =>

@@ -21,7 +21,7 @@ function sleep(ms) {
 export async function cmdWait(requestIdRaw, opts) {
     const id = parseRequestId(requestIdRaw);
     const timeoutMinutes = parseTimeout(opts.timeout);
-    const ctx = loadContext();
+    const ctx = await loadContext();
     const started = Date.now();
     const deadline = timeoutMinutes === undefined ? undefined : started + timeoutMinutes * 60_000;
     let view = await loadRequestView(ctx, id);

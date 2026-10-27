@@ -50,7 +50,9 @@ These come from `aidr` itself; nothing reached the contract.
 | `InsufficientGasFunds` | The agent's address has no USDC for gas | Send it a little USDC. |
 | `NonceConflict` | Two transactions from the same key at once | Run one payment at a time. |
 | `RpcError`, `ReceiptTimeout` | Network trouble, or no confirmation in time | Check the explorer link or `aidr history` before retrying. |
-| `NotConfigured`, `KeyMissing`, `KeyMismatch`, `ConfigInvalid` | `aidr` isn't set up on this machine | Run `aidr init` again. |
+| `NotLinked` | The owner hasn't added this agent yet | Open the link `aidr setup` printed (it's in `hint`) and click Add agent. |
+| `AmbiguousWallet` | The agent was added to more than one wallet | Run `aidr setup --wallet <id>` to pick one. |
+| `NotConfigured`, `KeyMissing`, `KeyMismatch`, `ConfigInvalid` | `aidr` isn't set up on this machine | Run `aidr setup`. |
 
 ## Next
 

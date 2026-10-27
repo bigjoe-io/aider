@@ -8,7 +8,7 @@ function iso(ts) {
     return new Date(Number(ts) * 1000).toISOString();
 }
 export async function cmdBalance() {
-    const ctx = loadContext();
+    const ctx = await loadContext();
     const { publicClient, contract, walletId, agentAddress, cfg } = ctx;
     const [wallet, agent, now] = await rpc(ctx, () => Promise.all([
         readWallet(publicClient, contract, walletId),

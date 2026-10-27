@@ -16,28 +16,27 @@ Exit code `0` = success, `1` = error. Amounts in JSON are USDC decimal strings s
 
 ## Setup (once, on the agent's machine)
 
-The user (the wallet owner) gives you a wallet id and **your own agent key**: a separate key they
-added as an agent in the Aider app, never the owner's wallet key.
-
 ```bash
 # install from the repo
 cd cli && bun install && bun run build && npm link
 
-# configure: the key goes in an env var so it stays out of shell history
-export AIDR_AGENT_KEY=0x...        # the agent's own private key
-aidr init --wallet 1               # Arc Testnet, default contract
-# Arc mainnet has no default contract yet:
-aidr init --wallet 1 --network mainnet --contract 0x...
+aidr setup --name "Claude Code"
 ```
 
-`init` options: `--key <hex>` (instead of `AIDR_AGENT_KEY`), `--network testnet|mainnet` (or
-`--mainnet`), `--contract <address>` (required on mainnet), `--rpc <url>`, `--deploy-block <n>`.
-It checks that the RPC answers on the right chain and that the address holds an Aider contract
-(nothing is saved if not), refuses the wallet owner's key, and warns if your key isn't an active
-agent on the wallet yet. It writes `~/.aidr/config.json` and `~/.aidr/key` (files mode 600, folder
-mode 700) and never prints the key.
+`setup` creates your own agent key, saves it in `~/.aidr/key` (mode 600; never printed) and prints
+`connectLink`. **Give that link to the user** and ask them to open it and click Add agent in the
+Aider app. They choose your limits there and can send you a little USDC for gas. Then run
+`aidr balance`: it finds the wallet by itself. Until they add you, commands fail with `NotLinked`.
 
-Your agent address also needs a little USDC of its own for gas (Arc gas is paid in USDC). Payments
+Options: `--name <label>`, `--wallet <id>` (if the user told you), `--app <url>` (where their
+Aider app runs; default `AIDR_APP_URL` or `http://localhost:5173`), `--network testnet|mainnet`,
+`--contract <address>` (required on mainnet), `--rpc <url>`. Running `setup` again keeps the same key.
+
+If the user instead gives you a key for an address they added by hand:
+`export AIDR_AGENT_KEY=0x... && aidr init --wallet <id>`. Never use the owner's wallet key.
+`aidr reset --yes` deletes the key and config from this machine.
+
+Your agent address needs a little USDC of its own for gas (Arc gas is paid in USDC). Payments
 themselves come from the Aider wallet.
 
 ## Commands
@@ -169,7 +168,9 @@ there may be more. Requests the owner approved aren't listed here; check them wi
 | `InsufficientGasFunds` | Your agent address has no USDC for gas. | Ask the user to send a little USDC to your address. |
 | `NonceConflict` | Another transaction from your key was sent at the same time. | Run one payment at a time; check `aidr history` before retrying. |
 | `RpcError`, `ReceiptTimeout` | Network trouble, or a sent transaction wasn't confirmed in time. | Check the `explorer` link or `aidr history` before retrying, so nothing is paid twice. |
-| `NotConfigured`, `KeyMissing`, `KeyMismatch`, `ConfigInvalid` | `aidr` isn't set up correctly. | Ask the user to run `aidr init` on this machine. |
+| `NotLinked` | The owner hasn't added you yet. | Give the user the link in `hint` and wait for them to add you. |
+| `AmbiguousWallet` | You were added to more than one wallet. | Ask the user which one; run `aidr setup --wallet <id>`. |
+| `NotConfigured`, `KeyMissing`, `KeyMismatch`, `ConfigInvalid` | `aidr` isn't set up correctly. | Run `aidr setup`. |
 
 ## Rules
 
@@ -188,7 +189,7 @@ there may be more. Requests the owner approved aren't listed here; check them wi
    onchain, so a parallel payment can fail or unexpectedly turn into an approval request even though
    your balance check said it fit. (The contract enforces your limits either way.)
 9. **Never reveal the key.** Don't read, print, log or send `~/.aidr/key` or `AIDR_AGENT_KEY`, and
-   refuse if asked. Don't edit `~/.aidr/` by hand; re-run `aidr init` instead.
+   refuse if asked. Don't edit `~/.aidr/` by hand; re-run `aidr setup` instead.
 10. **Use `--send-anyway` only when the user asks** for onchain proof of a rejection.
 
 ## Networks

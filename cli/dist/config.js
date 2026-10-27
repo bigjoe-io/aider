@@ -14,7 +14,7 @@ export function configPath() {
 export function keyPath() {
     return join(configDir(), "key");
 }
-const SETUP_HINT = "Run on the agent's machine: export AIDR_AGENT_KEY=0x<the agent's private key> && aidr init --wallet <walletId>";
+const SETUP_HINT = "Run on the agent's machine: aidr setup";
 /** Normalises a private key ("0x" optional, 64 hex chars) or returns null. Never echoes it. */
 export function normalizeKey(raw) {
     const k = raw.trim();
@@ -37,12 +37,41 @@ function writePrivate(path, content) {
     renameSync(tmp, path);
     chmodSync(path, 0o600);
 }
-export function saveConfig(cfg, key) {
+function ensureDir() {
     const dir = configDir();
     mkdirSync(dir, { recursive: true, mode: 0o700 });
     chmodSync(dir, 0o700);
+}
+export function saveConfig(cfg, key) {
+    ensureDir();
     writePrivate(keyPath(), `${key}\n`);
+    writeConfig(cfg);
+}
+/** Rewrites config.json only (the key file is left alone). */
+export function writeConfig(cfg) {
+    ensureDir();
     writePrivate(configPath(), `${JSON.stringify(cfg, null, 2)}\n`);
+}
+/** The saved key, if there is a valid one (used by `aidr setup` to keep the agent's identity). */
+export function readSavedKey() {
+    const path = keyPath();
+    if (!existsSync(path))
+        return undefined;
+    const raw = readFileSync(path, "utf8");
+    registerSecret(raw);
+    const key = normalizeKey(raw);
+    if (key)
+        registerSecret(key);
+    return key ?? undefined;
+}
+/** The saved config, or undefined when there is none or it can't be read. */
+export function tryLoadConfig() {
+    try {
+        return loadConfig();
+    }
+    catch {
+        return undefined;
+    }
 }
 export function loadConfig() {
     const path = configPath();
@@ -63,7 +92,7 @@ export function loadConfig() {
         typeof c.contract === "string" &&
         isAddress(c.contract, { strict: false }) &&
         typeof c.walletId === "string" &&
-        /^\d+$/.test(c.walletId) &&
+        /^\d*$/.test(c.walletId) &&
         typeof c.agentAddress === "string" &&
         isAddress(c.agentAddress, { strict: false });
     if (!ok) {
@@ -80,6 +109,8 @@ export function loadConfig() {
         deployBlock: typeof c.deployBlock === "number" && c.deployBlock >= 0 ? c.deployBlock : 0,
         walletId: c.walletId,
         agentAddress: getAddress(c.agentAddress),
+        ...(typeof c.setupBlock === "number" && c.setupBlock >= 0 ? { setupBlock: c.setupBlock } : {}),
+        ...(typeof c.connectLink === "string" ? { connectLink: c.connectLink } : {}),
     };
 }
 /** Reads the agent key saved by `aidr init` and checks it matches the configured agent address. */

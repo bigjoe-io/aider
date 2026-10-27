@@ -11,10 +11,7 @@ tags: quickstart-agents, spending-rules, approval-requests
 
 You need a browser wallet such as MetaMask and some testnet USDC. Get testnet USDC from Circle's faucet at [faucet.circle.com](https://faucet.circle.com). On Arc, gas is also paid in USDC, so the same balance covers fees.
 
-You also need the address of the agent's key. Create a fresh key for the agent; it must not be your own wallet's key.
-
-> [!WARNING]
-> The agent key is stored on the agent's machine. Never use your owner key as an agent key. The contract refuses it.
+You don't need to create a key for the agent. The agent makes its own and sends you a link.
 
 ## 1. Connect
 
@@ -22,7 +19,7 @@ Open the app at `/app` and click **Connect wallet**. If your wallet is on anothe
 
 ## 2. Create a wallet
 
-Click **Create wallet** and confirm in your wallet. You get a wallet id (1, 2, 3…). The agent will need this number.
+Click **Create wallet** and confirm in your wallet. You get a wallet id (1, 2, 3…).
 
 ## 3. Deposit USDC
 
@@ -35,21 +32,26 @@ If you already approved enough earlier, the app skips the first step.
 
 ## 4. Add an agent
 
-Go to **Agents** and click **Add agent**. Fill in:
+On the agent's machine, run (or ask your agent to run):
+
+```bash title="Terminal"
+aidr setup --name "Claude Code"
+```
+
+It prints a link. Open it in this browser: **Add agent** opens with the agent's address and name filled in. Choose:
 
 | Field | Example | Meaning |
 |---|---|---|
-| Agent address | `0x7099…79C8` | The address of the agent's key. |
-| Label | `Claude Code` | A name you'll recognise in Activity. |
 | Per payment | `$0.10` | The largest single payment it can make on its own. |
 | Per day | `$0.50` | The most it can spend on its own per UTC day. |
 | Expires | 30 days | After this the key stops working. "Never" is allowed. |
+| Send 0.05 USDC for gas | on | Gas on Arc is paid in USDC, so the agent needs a little. |
 
-## 5. Connect the agent
+Click **Add agent**. That's it: the agent finds your wallet by itself. It can check with `aidr balance`.
 
-Each agent row has a **Connect this agent** panel with the exact commands for that wallet. Run them on the agent's machine; the [quickstart for agents](/docs/quickstart-agents) explains each step.
+New to `aidr`? The [quickstart for agents](/docs/quickstart-agents) covers installing it.
 
-## 6. Watch and approve
+## 5. Watch and approve
 
 Payments within the limits appear in **Activity** with their memo and an explorer link. Anything bigger appears in **Approvals**, with the amount already reserved. Click **Approve** to pay it or **Reject** to release the money.
 

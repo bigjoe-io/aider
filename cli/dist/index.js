@@ -2,13 +2,13 @@
 import { Command, CommanderError } from "commander";
 import { cmdBalance } from "./commands/balance.js";
 import { cmdHistory } from "./commands/history.js";
-import { cmdInit } from "./commands/init.js";
+import { cmdInit, cmdReset, cmdSetup } from "./commands/init.js";
 import { cmdPay } from "./commands/pay.js";
 import { cmdStatus } from "./commands/status.js";
 import { cmdWait } from "./commands/wait.js";
 import { CliError, decodeError, explainError } from "./errors.js";
 import { emitError, hasEmitted, note } from "./output.js";
-const VERSION = "0.2.0";
+const VERSION = "0.3.0";
 const program = new Command();
 program
     .name("aidr")
@@ -19,8 +19,22 @@ program
     .exitOverride()
     .configureOutput({ outputError: (str, write) => write(str) });
 program
+    .command("setup")
+    .description("Start here. Makes this agent's own key and prints a link the wallet owner opens to add it.")
+    .option("--name <label>", "how the agent appears to the owner, e.g. \"Claude Code\"")
+    .option("--wallet <id>", "the wallet id, if the owner already told you (otherwise found once the owner adds the agent)")
+    .option("--app <url>", "the Aider app the link opens (default: AIDR_APP_URL or http://localhost:5173)")
+    .option("--network <name>", "testnet (default) or mainnet")
+    .option("--mainnet", "same as --network mainnet")
+    .option("--contract <address>", "Aider contract address (required on mainnet; testnet defaults to the public deployment)")
+    .option("--rpc <url>", "RPC URL (default: the network's public RPC)")
+    .option("--deploy-block <n>", "block the contract was deployed in (history never scans below it)")
+    .action(async (opts) => {
+    await cmdSetup(opts);
+});
+program
     .command("init")
-    .description("Set up this machine's agent (run on the agent's machine). Key from AIDR_AGENT_KEY (recommended) or --key.")
+    .description("Advanced: set up with a key you already have, from AIDR_AGENT_KEY (recommended) or --key. Most agents use `aidr setup`.")
     .requiredOption("--wallet <id>", "Aider wallet id (a number)")
     .option("--key <hex>", "agent private key (prefer the AIDR_AGENT_KEY env var: keeps it out of shell history)")
     .option("--network <name>", "testnet (default) or mainnet")
@@ -30,6 +44,13 @@ program
     .option("--deploy-block <n>", "block the contract was deployed in (history never scans below it)")
     .action(async (opts) => {
     await cmdInit(opts);
+});
+program
+    .command("reset")
+    .description("Delete this machine's agent key and config")
+    .option("--yes", "confirm: the key can't be recovered")
+    .action((opts) => {
+    cmdReset(opts);
 });
 program
     .command("balance")

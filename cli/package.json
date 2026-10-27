@@ -1,6 +1,6 @@
 {
   "name": "aidr-cli",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "aidr: the CLI that lets an AI agent pay USDC from an Aider wallet on Arc, inside the owner's limits",
   "type": "module",
   "bin": {

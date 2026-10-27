@@ -146,7 +146,7 @@ export async function cmdPay(toRaw, amountRaw, memoRaw, opts) {
     const amount = parseAmountArg(amountRaw);
     const memo = parseMemo(memoRaw);
     const ttlMinutes = parseTtl(opts.ttl);
-    const ctx = loadSignerContext();
+    const ctx = await loadSignerContext();
     // Paying the Aider contract or the USDC token debits the wallet and strands the USDC
     // (the v1 contract doesn't stop it), so refuse before anything is signed — even with --send-anyway.
     if (isAddressEqual(to, ctx.contract) || isAddressEqual(to, USDC_ADDRESS)) {

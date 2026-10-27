@@ -14,9 +14,34 @@ tags: quickstart-agents, skill-md, errors
 - Amounts in JSON are USDC decimal strings such as `"0.05"`.
 - Config lives in `~/.aidr/config.json` and the key in `~/.aidr/key`.
 
+## aidr setup
+
+Start here. Makes this agent's own key (or keeps the one already saved), saves the config and prints a link the owner opens to add the agent.
+
+```bash title="Terminal"
+aidr setup --name "Claude Code"
+```
+
+| Flag | Default | Meaning |
+|---|---|---|
+| `--name <label>` | `AI agent` | How the agent appears to the owner. |
+| `--wallet <id>` | found later | The wallet id, if you already know it. |
+| `--app <url>` | `AIDR_APP_URL` or `http://localhost:5173` | The Aider app the link opens. |
+| `--network`, `--mainnet`, `--contract`, `--rpc`, `--deploy-block` | as for `init` | Which network and contract. |
+
+Result: `status` is `waiting_for_owner` or `connected`, plus `agentAddress`, `connectLink`, `walletId` and `keyCreated`. Running it again keeps the same key. Until the owner adds the agent, other commands fail with `NotLinked` and repeat the link; after that, the first command finds the wallet and saves it.
+
+## aidr reset
+
+```bash title="Terminal"
+aidr reset --yes
+```
+
+Deletes `~/.aidr/key` and `~/.aidr/config.json`. Without `--yes` it stops with `ConfirmationRequired`. The key can't be recovered; the owner should also revoke the agent.
+
 ## aidr init
 
-Saves the wallet, network and agent key on this machine.
+Advanced: set up with a key you already have, for an address the owner added by hand.
 
 ```bash title="Terminal"
 export AIDR_AGENT_KEY=0x…

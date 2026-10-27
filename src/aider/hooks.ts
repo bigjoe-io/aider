@@ -16,6 +16,7 @@ import type {
   Hash,
   TransactionReceipt,
 } from 'viem'
+import { parseAbi } from 'viem'
 import { config } from '@/config'
 import { useNow } from '@/lib/hooks'
 import { AIDER_ABI, ERC20_ABI } from './abi'
@@ -106,6 +107,8 @@ export interface GlobalStats {
 // Internals
 // ---------------------------------------------------------------------------------------------
 const CHAIN = AIDER_CHAIN_ID
+
+const TRANSFER_ABI = parseAbi(['function transfer(address to, uint256 amount) returns (bool)'])
 const keyBase = ['aider', CHAIN, AIDER_ADDRESS ?? 'none'] as const
 
 /** Read many contract calls in multicall batches; failed calls come back undefined. */
@@ -593,7 +596,7 @@ export function useAiderWrite() {
 
   const run = useCallback(
     async (
-      request: { abi: typeof AIDER_ABI | typeof ERC20_ABI; address: Address; functionName: string; args: readonly unknown[] },
+      request: { abi: typeof AIDER_ABI | typeof ERC20_ABI | typeof TRANSFER_ABI; address: Address; functionName: string; args: readonly unknown[] },
       opts: WriteOptions,
     ): Promise<WriteResult> => {
       const toastId = opts.silent ? undefined : toast.loading('Waiting for wallet…')
@@ -661,5 +664,12 @@ export function useAiderWrite() {
     [run],
   )
 
-  return { write, approveUsdc, isPending: pendingCount > 0 }
+  /** Send USDC from the connected wallet (e.g. a little gas for a new agent: on Arc, gas is paid in USDC). */
+  const sendUsdc = useCallback(
+    (to: Address, amount: bigint, opts: WriteOptions = {}): Promise<WriteResult> =>
+      run({ abi: TRANSFER_ABI, address: USDC_ADDRESS, functionName: 'transfer', args: [to, amount] }, { pending: 'Sending USDC…', success: 'USDC sent', ...opts }),
+    [run],
+  )
+
+  return { write, approveUsdc, sendUsdc, isPending: pendingCount > 0 }
 }

@@ -28,7 +28,7 @@ function sleep(ms: number): Promise<void> {
 export async function cmdWait(requestIdRaw: string, opts: { timeout?: string }): Promise<void> {
   const id = parseRequestId(requestIdRaw);
   const timeoutMinutes = parseTimeout(opts.timeout);
-  const ctx = loadContext();
+  const ctx = await loadContext();
   const started = Date.now();
   const deadline = timeoutMinutes === undefined ? undefined : started + timeoutMinutes * 60_000;
 
