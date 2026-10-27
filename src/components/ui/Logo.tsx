@@ -4,30 +4,19 @@ import { cn } from '@/lib/cn'
 const INK = 'rgb(var(--logo-ink, var(--bg)))'
 
 /**
- * Aider mark (original): a rounded square with a tilted kite — diamond body, cross spars and a short
- * curved string tail. The square uses currentColor; the kite uses the page background colour.
+ * Aider mark: a rounded square with three blocks stepping up (spending that grows within limits).
+ * The square uses currentColor; the blocks use the page background colour.
  */
 export function LogoMark({ className, title }: { className?: string; title?: string }) {
   return (
     <svg viewBox="0 0 32 32" className={cn('size-7', className)} role={title ? 'img' : undefined} aria-hidden={title ? undefined : true}>
       {title && <title>{title}</title>}
       <rect x="1" y="1" width="30" height="30" rx="8.5" fill="currentColor" />
-      <g transform="rotate(-14 17 13)">
-        <path d="M17 4.6 L23.4 12.4 L17 23.2 L10.6 12.4 Z" style={{ fill: INK }} />
-        <path
-          d="M17 6.4 V21.4 M12.4 12.4 H21.6"
-          strokeWidth="0.9"
-          strokeLinecap="round"
-          style={{ stroke: 'currentColor', strokeOpacity: 0.5 }}
-        />
+      <g style={{ fill: INK }}>
+        <rect x="7" y="19" width="6" height="6" rx="0.6" />
+        <rect x="13" y="13" width="6" height="6" rx="0.6" />
+        <rect x="19" y="7" width="6" height="6" rx="0.6" />
       </g>
-      <path
-        d="M19.6 23.9 C 18.4 25.3, 21.6 25.9, 20.2 27.4 C 19.4 28.2, 21 28.8, 22.2 28.4"
-        fill="none"
-        strokeWidth="1.25"
-        strokeLinecap="round"
-        style={{ stroke: INK }}
-      />
     </svg>
   )
 }
