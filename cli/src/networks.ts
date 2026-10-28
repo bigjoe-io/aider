@@ -10,7 +10,7 @@ export interface NetworkPreset {
   chainId: number;
   rpcUrl: string;
   explorerUrl: string;
-  /** Default Aider deployment. Mainnet has none yet, so `--contract` is required there. */
+  /** Default Aider deployment on this network. */
   defaultContract?: Address;
   /** Block the default deployment was created in (history never scans below it). */
   defaultDeployBlock?: number;
@@ -32,6 +32,8 @@ export const NETWORKS: Record<NetworkName, NetworkPreset> = {
     chainId: 5042,
     rpcUrl: "https://rpc.mainnet.arc.io",
     explorerUrl: "https://explorer.arc.io",
+    defaultContract: "0xaeb8bf4852d4a6ad0fe75d488b418cae664653e9",
+    defaultDeployBlock: 28199868,
   },
 };
 

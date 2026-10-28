@@ -16,6 +16,8 @@ export const NETWORKS = {
         chainId: 5042,
         rpcUrl: "https://rpc.mainnet.arc.io",
         explorerUrl: "https://explorer.arc.io",
+        defaultContract: "0xaeb8bf4852d4a6ad0fe75d488b418cae664653e9",
+        defaultDeployBlock: 28199868,
     },
 };
 /** USDC's ERC-20 interface on both Arc networks (6 decimals). Never a valid payment recipient. */

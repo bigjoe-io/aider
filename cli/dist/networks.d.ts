@@ -7,7 +7,7 @@ export interface NetworkPreset {
     chainId: number;
     rpcUrl: string;
     explorerUrl: string;
-    /** Default Aider deployment. Mainnet has none yet, so `--contract` is required there. */
+    /** Default Aider deployment on this network. */
     defaultContract?: Address;
     /** Block the default deployment was created in (history never scans below it). */
     defaultDeployBlock?: number;

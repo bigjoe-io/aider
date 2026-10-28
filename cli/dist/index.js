@@ -8,7 +8,7 @@ import { cmdStatus } from "./commands/status.js";
 import { cmdWait } from "./commands/wait.js";
 import { CliError, decodeError, explainError } from "./errors.js";
 import { emitError, hasEmitted, note } from "./output.js";
-const VERSION = "0.3.1";
+const VERSION = "0.4.0";
 const program = new Command();
 program
     .name("aidr")
@@ -26,7 +26,7 @@ program
     .option("--app <url>", "the Aider app the link opens (default: AIDR_APP_URL or https://aider-smoky.vercel.app)")
     .option("--network <name>", "testnet (default) or mainnet")
     .option("--mainnet", "same as --network mainnet")
-    .option("--contract <address>", "Aider contract address (required on mainnet; testnet defaults to the public deployment)")
+    .option("--contract <address>", "Aider contract address (default: the public deployment on the chosen network)")
     .option("--rpc <url>", "RPC URL (default: the network's public RPC)")
     .option("--deploy-block <n>", "block the contract was deployed in (history never scans below it)")
     .action(async (opts) => {
@@ -39,7 +39,7 @@ program
     .option("--key <hex>", "agent private key (prefer the AIDR_AGENT_KEY env var: keeps it out of shell history)")
     .option("--network <name>", "testnet (default) or mainnet")
     .option("--mainnet", "same as --network mainnet")
-    .option("--contract <address>", "Aider contract address (required on mainnet; testnet defaults to the public deployment)")
+    .option("--contract <address>", "Aider contract address (default: the public deployment on the chosen network)")
     .option("--rpc <url>", "RPC URL (default: the network's public RPC)")
     .option("--deploy-block <n>", "block the contract was deployed in (history never scans below it)")
     .action(async (opts) => {

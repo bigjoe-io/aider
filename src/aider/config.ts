@@ -20,6 +20,9 @@ export const MAINNET_CHAIN_ID = 5042
 /** Public default deployment on Arc Testnet. */
 export const DEFAULT_TESTNET_CONTRACT: Address = '0xed32e15d81e7864bf19caea4333bd0781f328ba3'
 export const DEFAULT_TESTNET_DEPLOY_BLOCK = 69187895n
+/** Public default deployment on Arc mainnet (v2). */
+export const DEFAULT_MAINNET_CONTRACT: Address = '0xaeb8bf4852d4a6ad0fe75d488b418cae664653e9'
+export const DEFAULT_MAINNET_DEPLOY_BLOCK = 28199868n
 
 // NOTE: each env var must be referenced literally (process.env.NEXT_PUBLIC_X) so Next can inline it.
 const rawNetwork = (process.env.NEXT_PUBLIC_AIDER_NETWORK ?? '').trim().toLowerCase()
@@ -57,7 +60,7 @@ export interface NetworkConfig {
   explorerBase: string
   /** The Aider contract, or undefined when it isn't deployed on this network yet. */
   contract: Address | undefined
-  /** True when `contract` is the public default testnet deployment (the CLI needs no --contract). */
+  /** True when `contract` is the network's public default deployment (the CLI needs no --contract). */
   isDefaultDeployment: boolean
   /** First block the activity indexer scans. */
   deployBlock: bigint
@@ -84,10 +87,12 @@ function buildNetwork(network: AiderNetwork): NetworkConfig {
   const contract =
     parseContract(r.contract, `NEXT_PUBLIC_AIDER_${upper}_CONTRACT`) ??
     (isDefault ? parseContract(rawContract, 'NEXT_PUBLIC_AIDER_CONTRACT') : undefined) ??
-    (isTestnet ? getAddress(DEFAULT_TESTNET_CONTRACT) : undefined)
-  const isDefaultDeployment = isTestnet && contract !== undefined && contract.toLowerCase() === DEFAULT_TESTNET_CONTRACT.toLowerCase()
+    getAddress(isTestnet ? DEFAULT_TESTNET_CONTRACT : DEFAULT_MAINNET_CONTRACT)
+  const defaultContract = isTestnet ? DEFAULT_TESTNET_CONTRACT : DEFAULT_MAINNET_CONTRACT
+  const isDefaultDeployment = contract.toLowerCase() === defaultContract.toLowerCase()
   const blockRaw = r.deployBlock || (isDefault ? rawDeployBlock : '')
-  const deployBlock = /^\d+$/.test(blockRaw) ? BigInt(blockRaw) : isDefaultDeployment ? DEFAULT_TESTNET_DEPLOY_BLOCK : 0n
+  const defaultBlock = isTestnet ? DEFAULT_TESTNET_DEPLOY_BLOCK : DEFAULT_MAINNET_DEPLOY_BLOCK
+  const deployBlock = /^\d+$/.test(blockRaw) ? BigInt(blockRaw) : isDefaultDeployment ? defaultBlock : 0n
   const fact = requireChain(chainId)
   return {
     network,

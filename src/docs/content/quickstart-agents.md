@@ -28,7 +28,7 @@ aidr setup --name "Claude Code"{{setupFlags}}
 ```
 
 :::mainnet
-On mainnet, always pass `--network mainnet` and the contract address, as above.
+On mainnet, always pass `--network mainnet`, as above. This needs `aidr` 0.4.0 or newer.
 :::
 
 1. `aidr` makes the agent its own key and keeps it on this computer (in `~/.aidr/key`). It never prints it.
@@ -93,7 +93,7 @@ This deletes the key. The owner should also click **Revoke** in the app.
 |---|---|
 | The owner runs the app somewhere else (for example locally) | `aidr setup --app http://localhost:5173` |
 | You already know the wallet number | `aidr setup --wallet 1` |
-| The other network | Testnet: `aidr setup`. Mainnet: `aidr setup --network mainnet --contract <address>`. |
+| The other network | Testnet: `aidr setup`. Mainnet: `aidr setup --network mainnet`. |
 | The owner gave you an existing key | `export AIDR_AGENT_KEY=0x…` then `aidr init --wallet 1` |
 
 ## Next

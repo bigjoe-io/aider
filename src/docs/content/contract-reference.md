@@ -12,7 +12,7 @@ tags: watching-activity, errors, security-model
 | Network | Address | Notes |
 |---|---|---|
 | Arc Testnet (5042002) | [0xed32e15d81e7864bf19caea4333bd0781f328ba3](https://explorer.testnet.arc.io/address/0xed32e15d81e7864bf19caea4333bd0781f328ba3) | Version 1 (deployed as `Leash`), deploy block 69187895 |
-| Arc mainnet (5042) | {{mainnetContract}} | |
+| Arc mainnet (5042) | [0xaeb8bf4852d4a6ad0fe75d488b418cae664653e9](https://explorer.arc.io/address/0xaeb8bf4852d4a6ad0fe75d488b418cae664653e9) | Version 2, deploy block 28199868 |
 
 ## Constants
 

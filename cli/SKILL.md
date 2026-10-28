@@ -29,7 +29,7 @@ Aider app. They choose your limits there and can send you a little USDC for gas.
 
 Options: `--name <label>`, `--wallet <id>` (if the user told you), `--app <url>` (where their
 Aider app runs; default `AIDR_APP_URL` or `https://aider-smoky.vercel.app`), `--network testnet|mainnet`,
-`--contract <address>` (required on mainnet), `--rpc <url>`. Running `setup` again keeps the same key.
+`--contract <address>` (defaults to the public deployment on each network), `--rpc <url>`. Running `setup` again keeps the same key.
 
 If the user instead gives you a key for an address they added by hand:
 `export AIDR_AGENT_KEY=0x... && aidr init --wallet <id>`. Never use the owner's wallet key.
@@ -196,6 +196,6 @@ there may be more. Requests the owner approved aren't listed here; check them wi
 | | Arc Testnet | Arc mainnet |
 |---|---|---|
 | Chain id | 5042002 | 5042 |
-| Aider contract | `0xed32e15d81e7864bf19caea4333bd0781f328ba3` (default) | none yet: pass `--contract` |
+| Aider contract | `0xed32e15d81e7864bf19caea4333bd0781f328ba3` (default) | `0xaeb8bf4852d4a6ad0fe75d488b418cae664653e9` (default) |
 | Explorer | https://explorer.testnet.arc.io | https://explorer.arc.io |
 | USDC (ERC-20, 6 decimals) | `0x3600000000000000000000000000000000000000` | same |

@@ -44,8 +44,8 @@ Copy `.env.example` to `.env.local`. All variables are optional:
 |---|---|---|
 | `NEXT_PUBLIC_AIDER_NETWORK` | `testnet` | The network visitors see first. They switch with the Testnet / Mainnet switch in the top bar. |
 | `NEXT_PUBLIC_AIDER_TESTNET_CONTRACT` | testnet deployment | The Aider contract on Arc Testnet. |
-| `NEXT_PUBLIC_AIDER_MAINNET_CONTRACT` | none | The Aider contract on Arc mainnet. Until it's set, mainnet shows "not deployed yet". |
-| `NEXT_PUBLIC_AIDER_TESTNET_DEPLOY_BLOCK`, `NEXT_PUBLIC_AIDER_MAINNET_DEPLOY_BLOCK` | `69187895` on the default testnet contract, else 0 | Where the activity indexer starts reading events. |
+| `NEXT_PUBLIC_AIDER_MAINNET_CONTRACT` | mainnet deployment | The Aider contract on Arc mainnet. |
+| `NEXT_PUBLIC_AIDER_TESTNET_DEPLOY_BLOCK`, `NEXT_PUBLIC_AIDER_MAINNET_DEPLOY_BLOCK` | `69187895` / `28199868` for the default contracts, else 0 | Where the activity indexer starts reading events. |
 | `NEXT_PUBLIC_AIDER_TESTNET_RPC_URL`, `NEXT_PUBLIC_AIDER_MAINNET_RPC_URL` | Arc's public RPCs | Dedicated RPCs. Recommended in production: the public RPCs rate-limit. |
 | `NEXT_PUBLIC_AIDER_CONTRACT`, `_DEPLOY_BLOCK`, `_RPC_URL` | | Older single-network names; they apply to the default network. |
 | `NEXT_PUBLIC_AIDER_GITHUB_URL`, `NEXT_PUBLIC_AIDER_X_URL` | | Links in the nav and footer. |
@@ -79,7 +79,7 @@ See the [contract reference](src/docs/content/contract-reference.md) for every f
 | Network | Address |
 |---|---|
 | Arc Testnet | `0xed32e15d81e7864bf19caea4333bd0781f328ba3` (v1 build, deploy block 69187895) |
-| Arc mainnet | not deployed yet |
+| Arc mainnet | `0xaeb8bf4852d4a6ad0fe75d488b418cae664653e9` (v2, deploy block 28199868) |
 
 ## The `aidr` CLI
 

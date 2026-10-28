@@ -18,11 +18,7 @@ import type { CalloutTone } from '@/components/ui'
 /** Placeholders docs can use as {{name}}. */
 export function networkVars(net: NetworkConfig): Record<string, string> {
   const contract = net.contract ?? (net.isTestnet ? '0x…' : '<mainnet contract, not deployed yet>')
-  const setupFlags = net.isTestnet
-    ? net.isDefaultDeployment
-      ? ''
-      : ` --contract ${contract}`
-    : ` --network mainnet --contract ${contract}`
+  const setupFlags = (net.isTestnet ? '' : ' --network mainnet') + (net.isDefaultDeployment ? '' : ` --contract ${contract}`)
   return {
     network: net.label,
     chain: net.displayName,

@@ -53,9 +53,9 @@ aidr init --wallet 1
 | `--wallet <id>` | required | The Aider wallet id. |
 | `--key <hex>` | `AIDR_AGENT_KEY` | The agent's private key. Prefer the env var. |
 | `--network testnet|mainnet` | `testnet` | Which Arc network. `--mainnet` is a shortcut. |
-| `--contract <address>` | testnet deployment | Required on mainnet. |
+| `--contract <address>` | the network's public deployment | Use another Aider contract. |
 | `--rpc <url>` | Arc's public RPC | Use another RPC. |
-| `--deploy-block <n>` | testnet: 69187895 | Where `history` stops scanning. |
+| `--deploy-block <n>` | testnet: 69187895, mainnet: 28199868 | Where `history` stops scanning. |
 
 It checks the RPC's chain, that the address holds an Aider contract, that the key isn't the wallet owner's, and warns if the key isn't an active agent yet.
 

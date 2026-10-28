@@ -12,10 +12,14 @@ This is the **project memory** - what Arc Studio remembers about building this a
 |---|---|---|
 | Leash (v1) | Arc Testnet | 0xed32e15d81e7864bf19caea4333bd0781f328ba3 |
 | Aider (v2) | Arc Testnet | 0xeb0d286eb7ce6ae7b211511db66a6ed94bf416b2 |
+| Aider (v2) | Arc Mainnet | 0xaeb8bf4852d4a6ad0fe75d488b418cae664653e9 |
 
 Aider v2 deploy tx: `0xc32daa824f41a5931362f866c11bfba24bd47fa2eb1872e0abfb9298a9d12177`  
 Explorer: https://explorer.testnet.arc.io/address/0xeb0d286eb7ce6ae7b211511db66a6ed94bf416b2  
 Deployed: 2026-10-26T23:26:55.526Z
+
+Aider v2 on Arc Mainnet: deploy tx `0xc5bf2808f7666a02daf6610b0d3f9c1b7914890f659e0b02b2a6c8bba54ec2ca`, block 28199868, 2026-10-27 21:33:52 UTC. Explorer: https://explorer.arc.io/address/0xaeb8bf4852d4a6ad0fe75d488b418cae664653e9. Same bytecode as the testnet v2 deployment.  
+The app and the CLI default to this contract on mainnet and to the v1 contract (0xed32…) on testnet.
 
 ## What This App Does
 
@@ -27,7 +31,7 @@ Aider: a USDC wallet for AI agents on Arc. A human owner creates wallets, deposi
 - Web3: wagmi v2, viem v2, our own connect dialog (`src/components/wallet`)
 - Contracts: Solidity 0.8.28 + Foundry. Source `contracts/Aider.sol`, tests `contracts/test/*.t.sol` (91 tests). Build with `bun run contracts:build`, test with `bun run contracts:test`.
 - CLI: `cli/` (`aidr`, commander + viem), agent instructions in `cli/SKILL.md`, tests with `cd cli && bun test`
-- Chain: Arc Testnet (5042002) by default; Arc mainnet (5042) via `NEXT_PUBLIC_AIDER_NETWORK=mainnet` + `NEXT_PUBLIC_AIDER_CONTRACT`
+- Chain: Arc Testnet (5042002) and Arc mainnet (5042); visitors switch with the Testnet / Mainnet switch in the top bar (`NEXT_PUBLIC_AIDER_NETWORK` sets the default)
 - Token: USDC (6 decimals) at 0x3600000000000000000000000000000000000000
 - Toasts: Sonner
 

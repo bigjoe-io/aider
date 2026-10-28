@@ -348,8 +348,7 @@ function revokeAgent(uint256 walletId, address agent) external;   // owner only`
 
 /** `aidr setup` flags for a network (none on the default testnet deployment). */
 function setupFlags(net: NetworkConfig): string {
-  if (net.isTestnet) return net.isDefaultDeployment ? '' : ` --contract ${net.contract}`
-  return ` --network mainnet --contract ${net.contract ?? '<mainnet contract>'}`
+  return (net.isTestnet ? '' : ' --network mainnet') + (net.isDefaultDeployment ? '' : ` --contract ${net.contract ?? '<contract>'}`)
 }
 
 export function DeveloperCode() {
